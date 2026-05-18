@@ -83,6 +83,13 @@ def pick_labeled_money(labels: list[str], text: str) -> tuple[int, str, str]:
             chunk = searchable_text[start : start + 180]
             next_item = chunk.find("・", len(label))
             item_text = chunk[:next_item] if next_item != -1 else chunk
+            if next_item != -1:
+                following = chunk[next_item + 1 :]
+                if following.startswith("退去時払い可"):
+                    following_end = following.find("・")
+                    item_text += "・" + (following[:following_end] if following_end != -1 else following)
+            if re.search(rf"{re.escape(label)}\s*[:：]?\s*なし", item_text):
+                return 0, label, "monthly" if "会費" in label else "initial"
             amount_match = re.search(r"([\d,]+)円", item_text)
             amount = money_to_int(amount_match.group(1)) if amount_match else 0
             if amount:
@@ -163,6 +170,7 @@ def parse_property(text: str) -> dict:
             "退去時清掃費",
             "退去時清掃料",
             "清掃料",
+            "ハウスクリーニング",
             "ハウスクリーニング料",
         ],
         text,
@@ -171,18 +179,32 @@ def parse_property(text: str) -> dict:
         ["カギ交換費用", "鍵交換費用", "カードキー設定交換料", "シリンダー交換料", "シリンダー交換費", "鍵交換料"],
         text,
     )
-    insurance_text = pick(r"保険：(.+?)・(?:町内会費|ハウスクリーニング|室内清掃費用|退去時室内清掃料|カギ交換費用|鍵交換料|カードキー設定交換料)", text)
+    insurance_text = pick(r"保険：(.+?)・\s*(?:町内会費|ハウスクリーニング|室内清掃費用|退去時室内清掃料|カギ交換費用|鍵交換料|カードキー設定交換料)", text)
     insurance_fee = money_to_int(pick(r"([\d,]+)円", insurance_text))
     support_fee, support_label, support_timing = pick_labeled_money(
-        ["24時間管理料", "24時間管理費", "ギムサポートクラブ", "リペアサービス", "夜間サポート", "24時間サポート", "安心サポート", "緊急サポート"],
+        [
+            "24時間管理料",
+            "24時間管理費",
+            "シャーメゾンSUPPORT24",
+            "シャーメゾンＳＵＰＰＯＲＴ２４",
+            "ギムサポートクラブ",
+            "リペアサービス",
+            "夜間サポート",
+            "24時間サポート",
+            "安心サポート",
+            "緊急サポート",
+        ],
         text,
     )
     ac_cleaning_fee, ac_cleaning_label, ac_cleaning_timing = pick_labeled_money(
-        ["エアコン洗浄料", "エアコン清掃料", "エアコン清掃"],
+        ["エアコン洗浄料", "エアコン清掃料", "エアコン清掃", "エアコン整備料"],
         text,
     )
     stove_fee, stove_label, stove_timing = pick_labeled_money(["ストーブ整備料", "暖房整備料", "暖房分解清掃料", "冷暖房設備整備料"], text)
-    gas_lease_fee = money_to_int(pick(r"北ガス給湯器リース料([\d,]+)円", text))
+    gas_lease_fee, gas_lease_label, gas_lease_timing = pick_labeled_money(
+        ["北ガス給湯器リース料", "水道料金", "水道料"],
+        text,
+    )
     inquiry = pick(r"お問い合わせ番号\s*([^\n]+)", text)
     free_rent = pick(r"(無条件FR\d+か月対象)", text)
 
@@ -192,18 +214,22 @@ def parse_property(text: str) -> dict:
     key_money = parse_deposit_or_key_money("礼金", rent, text)
 
     guarantee_note = pick(r"保証会社：(.+?)(?:。)?・保険\s*：", text)
-    monthly_guarantee_fee, monthly_guarantee_label, monthly_guarantee_timing = pick_labeled_money(
-        ["ライフ月額保証料", "月額保証料", "月額手数料"],
-        guarantee_note or text,
-    )
     monthly_subtotal = rent + common_fee + town_fee + support_fee + gas_lease_fee
-    monthly_guarantee_rate = pick_percent(r"月額(?:賃料等|家賃等)[^\d]*(\d+(?:\.\d+)?)%", guarantee_note)
-    if not monthly_guarantee_fee and monthly_guarantee_rate:
+    monthly_guarantee_rate = pick_percent(r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料)[^\d]*(\d+(?:\.\d+)?)%", guarantee_note)
+    if monthly_guarantee_rate:
         monthly_guarantee_fee = int(monthly_subtotal * monthly_guarantee_rate / 100 + 0.5)
         monthly_guarantee_label = f"月額保証料（{monthly_guarantee_rate:g}%）"
         monthly_guarantee_timing = "monthly"
-    fixed_guarantee = money_to_int(pick(r"初回保証料\s*([\d,]+)円", guarantee_note))
+    else:
+        monthly_guarantee_fee, monthly_guarantee_label, monthly_guarantee_timing = pick_labeled_money(
+            ["ライフ月額保証料", "月額保証料", "月額手数料"],
+            guarantee_note or text,
+        )
+    fixed_guarantee = money_to_int(
+        pick(r"(?:初回保証料|新規契約時\]事務手数料|事務手数料)\s*[:：]?\s*([\d,]+)円", guarantee_note)
+    )
     initial_guarantee = fixed_guarantee or int(monthly_subtotal * 0.5 + 0.5)
+    initial_guarantee_label = "保証会社事務手数料" if fixed_guarantee and "事務手数料" in guarantee_note else "初回保証料"
 
     return {
         "property": {
@@ -242,14 +268,18 @@ def parse_property(text: str) -> dict:
             "keyMoneyText": key_money_text,
             "guaranteeNote": guarantee_note,
             "guaranteeMode": "fixed" if fixed_guarantee else "percent",
+            "monthlyGuaranteeMode": "percent" if monthly_guarantee_rate else "fixed",
+            "monthlyGuaranteeRate": monthly_guarantee_rate,
             "feeLabels": {
                 "cleaningFee": cleaning_label,
                 "keyFee": key_label,
                 "supportFee": support_label,
                 "townFee": town_label,
+                "gasLeaseFee": gas_lease_label,
                 "acCleaningFee": ac_cleaning_label,
                 "stoveMaintenanceFee": stove_label,
                 "monthlyGuaranteeFee": monthly_guarantee_label,
+                "guaranteePersonal": initial_guarantee_label,
                 "keyMoney": "礼金",
             },
             "feeTimings": {
@@ -257,6 +287,7 @@ def parse_property(text: str) -> dict:
                 "keyFee": key_timing,
                 "supportFee": support_timing,
                 "townFee": town_timing,
+                "gasLeaseFee": gas_lease_timing,
                 "acCleaningFee": ac_cleaning_timing,
                 "stoveMaintenanceFee": stove_timing,
                 "monthlyGuaranteeFee": "monthly" if monthly_guarantee_fee else monthly_guarantee_timing,
