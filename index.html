@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>賃貸初期費用見積</title>
+    <meta name="theme-color" content="#0b6b6f" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Rental Estimate</p>
+            <h1>賃貸初期費用見積</h1>
+          </div>
+          <div class="actions">
+            <label class="upload">
+              <input id="pdfInput" type="file" accept="application/pdf" />
+              PDF読込
+            </label>
+            <button id="sampleButton" type="button">添付PDFの内容</button>
+            <button id="resetButton" type="button">リセット</button>
+            <button id="printButton" type="button">A4印刷</button>
+          </div>
+        </header>
+
+        <div id="status" class="status">PDFを読み込むと物件概要と費用が自動入力されます。</div>
+
+        <section class="panel">
+          <div class="section-title">
+            <h2>見積設定</h2>
+            <div class="segment" role="tablist" aria-label="宛先区分">
+              <button class="active" data-estimate-type="personal" type="button">個人宛</button>
+              <button data-estimate-type="corporate" type="button">法人宛</button>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <label>宛名<input id="recipientName" value="お客様" /></label>
+            <label>発行日<input id="issueDate" type="date" /></label>
+            <label>入居開始日<input id="moveInDate" type="date" /></label>
+            <label>フリーレント開始<input id="freeRentStart" type="date" /></label>
+            <label>フリーレント終了<input id="freeRentEnd" type="date" /></label>
+            <label>日割日数<input id="prorateDays" type="number" min="0" max="31" value="0" /></label>
+            <label>日割対象月日数<input id="monthDays" type="number" min="28" max="31" value="30" /></label>
+          </div>
+
+          <div class="checks">
+            <label><input id="includeParking" type="checkbox" /> 駐車場を含める</label>
+            <label><input id="includeAcCleaning" type="checkbox" checked /> エアコン洗浄料を契約時に含める</label>
+            <label><input id="includeFreeRentNote" type="checkbox" checked /> フリーレント注記を表示</label>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-title">
+            <h2>初回保証料</h2>
+            <label class="rate-field">料率<input id="guaranteeRate" type="number" min="0" step="0.1" value="50" /></label>
+          </div>
+          <div id="guaranteeTargets" class="target-list"></div>
+        </section>
+
+        <section class="two-col">
+          <div class="panel">
+            <div class="section-title"><h2>物件概要</h2></div>
+            <div class="form-grid">
+              <label>物件名<input id="propertyTitle" /></label>
+              <label>号室<input id="room" /></label>
+              <label>所在地<input id="address" /></label>
+              <label>交通<input id="access" /></label>
+              <label>間取り<input id="layout" /></label>
+              <label>専有面積<input id="area" /></label>
+              <label>築年<input id="built" /></label>
+              <label>お問い合わせ番号<input id="inquiry" /></label>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="section-title"><h2>費用項目</h2></div>
+            <div id="timingNotice" class="timing-notice" hidden></div>
+            <div id="feeEditor" class="fee-editor"></div>
+            <button id="addFeeButton" class="plain" type="button">項目を追加</button>
+          </div>
+        </section>
+      </section>
+
+      <aside class="preview-wrap">
+        <div id="estimate" class="a4"></div>
+      </aside>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "賃貸初期費用見積",
+  "short_name": "初期費用見積",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#eef1f2",
+  "theme_color": "#0b6b6f",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
