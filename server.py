@@ -6,14 +6,11 @@ import re
 import socket
 import sys
 import tempfile
-import warnings
+from email.parser import BytesParser
+from email.policy import default
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import unquote
-
-with warnings.catch_warnings():
-    warnings.simplefilter("ignore", DeprecationWarning)
-    import cgi
 
 
 ROOT = Path(__file__).resolve().parent
@@ -131,6 +128,23 @@ def extract_pdf_text(pdf_path: Path) -> str:
     reader = pypdf.PdfReader(str(pdf_path))
     pages = [normalize_pdf_text(page.extract_text() or "") for page in reader.pages]
     return "\n".join(pages)
+
+
+def read_uploaded_pdf(handler: BaseHTTPRequestHandler) -> bytes | None:
+    content_type = handler.headers.get("Content-Type", "")
+    content_length = int(handler.headers.get("Content-Length", "0") or "0")
+    if not content_type.startswith("multipart/form-data") or content_length <= 0:
+        return None
+
+    body = handler.rfile.read(content_length)
+    message = BytesParser(policy=default).parsebytes(
+        f"Content-Type: {content_type}\r\nMIME-Version: 1.0\r\n\r\n".encode("utf-8") + body
+    )
+    for part in message.iter_parts():
+        if part.get_param("name", header="content-disposition") == "pdf":
+            payload = part.get_payload(decode=True)
+            return payload if payload else None
+    return None
 
 
 def parse_property(text: str) -> dict:
@@ -279,21 +293,13 @@ class AppHandler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
 
-        form = cgi.FieldStorage(
-            fp=self.rfile,
-            headers=self.headers,
-            environ={
-                "REQUEST_METHOD": "POST",
-                "CONTENT_TYPE": self.headers.get("Content-Type", ""),
-            },
-        )
-        file_item = form["pdf"] if "pdf" in form else None
-        if file_item is None or not getattr(file_item, "file", None):
+        pdf_bytes = read_uploaded_pdf(self)
+        if not pdf_bytes:
             self.send_error(400, "PDF file is required")
             return
 
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=True) as tmp:
-            tmp.write(file_item.file.read())
+            tmp.write(pdf_bytes)
             tmp.flush()
             text = extract_pdf_text(Path(tmp.name))
         payload = parse_property(text)
