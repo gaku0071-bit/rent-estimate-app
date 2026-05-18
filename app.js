@@ -35,6 +35,8 @@ const sampleData = {
     depositText: "1ヶ月",
     guaranteeNote: "保証会社利用必須 ROOM iD(エポスカード)利用可。初回保証料は月額家賃等の50%、月次保証料は1.5%。大手法人は不要",
     guaranteeMode: "percent",
+    monthlyGuaranteeMode: "percent",
+    monthlyGuaranteeRate: 1.5,
     includeParking: false,
     includeAcCleaning: true,
     issueDate: "2026/05/17",
@@ -180,7 +182,7 @@ function loadData(data) {
     type,
     timing: settings.feeTimings?.[key] || timing,
     guaranteeTarget,
-    derived: ["guaranteePersonal", "brokerageFee"].includes(key),
+    derived: ["guaranteePersonal", "brokerageFee"].includes(key) || (key === "monthlyGuaranteeFee" && settings.monthlyGuaranteeMode === "percent"),
   }));
   syncDerivedFees();
   renderGuaranteeTargets();
@@ -260,13 +262,23 @@ function syncBrokerageFee() {
   }
 }
 
+function syncMonthlyGuaranteeFee() {
+  if (state.settings?.monthlyGuaranteeMode !== "percent") return;
+  const monthlyGuaranteeFee = state.fees.find((fee) => fee.id === "monthlyGuaranteeFee");
+  const rate = Number(state.settings?.monthlyGuaranteeRate || 0);
+  if (monthlyGuaranteeFee && rate) {
+    monthlyGuaranteeFee.amount = Math.round(guaranteeBaseTotal() * (rate / 100));
+  }
+}
+
 function syncDerivedFees() {
+  syncMonthlyGuaranteeFee();
   syncGuaranteeFee();
   syncBrokerageFee();
 }
 
 function updateGuaranteeFeeInput() {
-  ["guaranteePersonal", "brokerageFee"].forEach((id) => {
+  ["guaranteePersonal", "brokerageFee", "monthlyGuaranteeFee"].forEach((id) => {
     const index = state.fees.findIndex((fee) => fee.id === id);
     if (index < 0) return;
     const input = document.querySelector(`[data-field="amount"][data-index="${index}"]`);
@@ -325,7 +337,11 @@ function shouldIncludeNextMonthRent() {
 }
 
 function skipProration(fee) {
-  return ["supportFee", "townFee"].includes(fee.id);
+  return ["supportFee", "townFee", "gasLeaseFee"].includes(fee.id);
+}
+
+function estimateMonthlyChargeFee(fee) {
+  return ["monthly", "optionalParking"].includes(fee.type) && fee.id !== "monthlyGuaranteeFee";
 }
 
 function proratedRows() {
@@ -333,7 +349,7 @@ function proratedRows() {
   const monthDays = Math.max(numberValue("monthDays"), 1);
   if (!days) return [];
   return state.fees
-    .filter((fee) => ["monthly", "optionalParking"].includes(fee.type) && applicableFee(fee) && !skipProration(fee))
+    .filter((fee) => estimateMonthlyChargeFee(fee) && applicableFee(fee) && !skipProration(fee))
     .map((fee) => ({
       label: `${fee.label} 日割（${days}/${monthDays}）`,
       amount: Math.round((fee.amount * days) / monthDays),
@@ -392,7 +408,7 @@ function freeRentDeductionRows() {
 function nextMonthRows() {
   if (!shouldIncludeNextMonthRent()) return [];
   return state.fees
-    .filter((fee) => ["monthly", "optionalParking"].includes(fee.type) && applicableFee(fee))
+    .filter((fee) => estimateMonthlyChargeFee(fee) && applicableFee(fee))
     .map((fee) => ({
       ...fee,
       label: `${fee.label} 翌月分`,
@@ -405,7 +421,7 @@ function nextMonthRows() {
 function monthlyFullRows() {
   if (!moveInDateParts()) return [];
   return state.fees
-    .filter((fee) => ["monthly", "optionalParking"].includes(fee.type) && applicableFee(fee) && skipProration(fee))
+    .filter((fee) => estimateMonthlyChargeFee(fee) && applicableFee(fee) && skipProration(fee))
     .map((fee) => ({
       ...fee,
       label: `${fee.label} 入居月分`,
@@ -449,7 +465,7 @@ function estimateRowOrder(row) {
 function estimateRows() {
   syncDerivedFees();
   const hasMoveInDate = Boolean(moveInDateParts());
-  const baseRows = state.fees.filter((fee) => applicableFee(fee) && fee.timing !== "moveout" && (!hasMoveInDate || !["monthly", "optionalParking"].includes(fee.type)));
+  const baseRows = state.fees.filter((fee) => applicableFee(fee) && fee.timing !== "moveout" && fee.id !== "monthlyGuaranteeFee" && (!hasMoveInDate || !["monthly", "optionalParking"].includes(fee.type)));
   const monthlyRows = hasMoveInDate ? nextMonthRows() : [];
   return [...baseRows, ...proratedRows(), ...monthlyRows, ...monthlyFullRows(), ...freeRentDeductionRows()]
     .filter((fee) => fee.amount !== 0)
