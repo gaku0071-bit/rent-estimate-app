@@ -103,7 +103,11 @@ def load_fee_rules() -> dict[str, list[str]]:
             continue
         cleaned = [str(label).strip() for label in labels if str(label).strip()]
         if cleaned:
-            rules[key] = cleaned
+            merged = rules.get(key, [])[:]
+            for label in cleaned:
+                if label not in merged:
+                    merged.append(label)
+            rules[key] = merged
     return rules
 
 
