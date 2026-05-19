@@ -15,6 +15,65 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parent
 
+DEFAULT_FEE_RULES = {
+    "cleaningFee": [
+        "室内清掃費用",
+        "退去時室内清掃料",
+        "退去時水廻消毒料",
+        "退去時水廻り消毒料",
+        "退去時水回消毒料",
+        "退去時水回り消毒料",
+        "水廻消毒料",
+        "水廻り消毒料",
+        "水回消毒料",
+        "水回り消毒料",
+        "退去時清掃費",
+        "退去時清掃料",
+        "清掃料",
+        "ハウスクリーニング",
+        "ハウスクリーニング料",
+    ],
+    "keyFee": ["カギ交換費用", "鍵交換費用", "カードキー設定交換料", "シリンダー交換料", "シリンダー交換費", "鍵交換料"],
+    "supportFee": [
+        "24時間管理料",
+        "24時間管理費",
+        "シャーメゾンSUPPORT24",
+        "シャーメゾンＳＵＰＰＯＲＴ２４",
+        "ギムサポートクラブ",
+        "リペアサービス",
+        "夜間サポート",
+        "24時間サポート",
+        "安心サポート",
+        "緊急サポート",
+    ],
+    "acCleaningFee": ["エアコン洗浄料", "エアコン清掃料", "エアコン清掃", "エアコン整備料"],
+    "stoveMaintenanceFee": ["ストーブ整備料", "暖房整備料", "暖房分解清掃料", "冷暖房設備整備料"],
+    "gasLeaseFee": ["北ガス給湯器リース料", "水道料金", "水道料"],
+    "townFee": ["町内会費", "町会費"],
+    "monthlyGuaranteeFee": ["ライフ月額保証料", "月額保証料", "月額手数料", "月次保証料", "月額事務手数料"],
+}
+
+
+def load_fee_rules() -> dict[str, list[str]]:
+    rules = {key: labels[:] for key, labels in DEFAULT_FEE_RULES.items()}
+    rules_path = ROOT / "fee_rules.json"
+    if not rules_path.exists():
+        return rules
+
+    try:
+        raw_rules = json.loads(rules_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return rules
+
+    for key, value in raw_rules.items():
+        labels = value.get("labels") if isinstance(value, dict) else value
+        if not isinstance(labels, list):
+            continue
+        cleaned = [str(label).strip() for label in labels if str(label).strip()]
+        if cleaned:
+            rules[key] = cleaned
+    return rules
+
 
 def local_ip_addresses() -> list[str]:
     addresses: set[str] = set()
@@ -155,56 +214,19 @@ def read_uploaded_pdf(handler: BaseHTTPRequestHandler) -> bytes | None:
 
 
 def parse_property(text: str) -> dict:
+    fee_rules = load_fee_rules()
     rent = money_to_int(pick(r"賃料\s*([\d,]+)\s*円", text))
     common_fee = money_to_int(pick(r"共益費・管理費\s*([\d,]+)円", text))
     parking_fee = money_to_int(pick(r"敷地内駐車場／[^／]*／([\d,]+)円", text))
-    town_fee, town_label, town_timing = pick_labeled_money(["町内会費"], text)
-    cleaning_fee, cleaning_label, cleaning_timing = pick_labeled_money(
-        [
-            "室内清掃費用",
-            "退去時室内清掃料",
-            "退去時水廻消毒料",
-            "退去時水回消毒料",
-            "水廻消毒料",
-            "水回消毒料",
-            "退去時清掃費",
-            "退去時清掃料",
-            "清掃料",
-            "ハウスクリーニング",
-            "ハウスクリーニング料",
-        ],
-        text,
-    )
-    key_fee, key_label, key_timing = pick_labeled_money(
-        ["カギ交換費用", "鍵交換費用", "カードキー設定交換料", "シリンダー交換料", "シリンダー交換費", "鍵交換料"],
-        text,
-    )
+    town_fee, town_label, town_timing = pick_labeled_money(fee_rules["townFee"], text)
+    cleaning_fee, cleaning_label, cleaning_timing = pick_labeled_money(fee_rules["cleaningFee"], text)
+    key_fee, key_label, key_timing = pick_labeled_money(fee_rules["keyFee"], text)
     insurance_text = pick(r"保険：(.+?)・\s*(?:町内会費|ハウスクリーニング|室内清掃費用|退去時室内清掃料|カギ交換費用|鍵交換料|カードキー設定交換料)", text)
     insurance_fee = money_to_int(pick(r"([\d,]+)円", insurance_text))
-    support_fee, support_label, support_timing = pick_labeled_money(
-        [
-            "24時間管理料",
-            "24時間管理費",
-            "シャーメゾンSUPPORT24",
-            "シャーメゾンＳＵＰＰＯＲＴ２４",
-            "ギムサポートクラブ",
-            "リペアサービス",
-            "夜間サポート",
-            "24時間サポート",
-            "安心サポート",
-            "緊急サポート",
-        ],
-        text,
-    )
-    ac_cleaning_fee, ac_cleaning_label, ac_cleaning_timing = pick_labeled_money(
-        ["エアコン洗浄料", "エアコン清掃料", "エアコン清掃", "エアコン整備料"],
-        text,
-    )
-    stove_fee, stove_label, stove_timing = pick_labeled_money(["ストーブ整備料", "暖房整備料", "暖房分解清掃料", "冷暖房設備整備料"], text)
-    gas_lease_fee, gas_lease_label, gas_lease_timing = pick_labeled_money(
-        ["北ガス給湯器リース料", "水道料金", "水道料"],
-        text,
-    )
+    support_fee, support_label, support_timing = pick_labeled_money(fee_rules["supportFee"], text)
+    ac_cleaning_fee, ac_cleaning_label, ac_cleaning_timing = pick_labeled_money(fee_rules["acCleaningFee"], text)
+    stove_fee, stove_label, stove_timing = pick_labeled_money(fee_rules["stoveMaintenanceFee"], text)
+    gas_lease_fee, gas_lease_label, gas_lease_timing = pick_labeled_money(fee_rules["gasLeaseFee"], text)
     inquiry = pick(r"お問い合わせ番号\s*([^\n]+)", text)
     free_rent = pick(r"(無条件FR\d+か月対象)", text)
 
@@ -222,7 +244,7 @@ def parse_property(text: str) -> dict:
         monthly_guarantee_timing = "monthly"
     else:
         monthly_guarantee_fee, monthly_guarantee_label, monthly_guarantee_timing = pick_labeled_money(
-            ["ライフ月額保証料", "月額保証料", "月額手数料"],
+            fee_rules["monthlyGuaranteeFee"],
             guarantee_note or text,
         )
     fixed_guarantee = money_to_int(
