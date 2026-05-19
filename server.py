@@ -26,10 +26,13 @@ DEFAULT_FEE_RULES = {
         "水廻り消毒量",
         "水廻消毒料",
         "水廻り消毒料",
+        "水廻り消毒費",
+        "水廻消毒費",
         "水回消毒料",
         "水回り消毒料",
         "水回り消毒料金",
         "水廻り消毒料金",
+        "水回り消毒費",
         "退去時清掃費",
         "退去時清掃料",
         "室内清掃料",
@@ -44,11 +47,14 @@ DEFAULT_FEE_RULES = {
         "鍵交換費用",
         "カードキー設定交換料",
         "カードキー設定料",
+        "カードキー設定変更料",
         "カードキー交換料",
         "シリンダー交換料",
         "シリンダー交換費",
         "鍵シリンダーローテーション費用",
         "鍵交換料",
+        "鍵交換代",
+        "カギ交換費",
     ],
     "supportFee": [
         "24時間管理料",
@@ -70,16 +76,31 @@ DEFAULT_FEE_RULES = {
         "エアコン分解清掃料",
         "エアコン分解整備料",
         "エアコンクリーニング",
+        "エアコンクリーニング代",
     ],
     "stoveMaintenanceFee": [
         "ストーブ整備料",
         "暖房整備料",
         "暖房分解清掃料",
         "暖房分解清掃料金",
+        "冷暖房機器清掃料",
+        "冷暖房機器清掃費",
         "FF分解清掃料",
+        "FF分解清掃費",
+        "FF分解清掃費用",
         "FFストーブ分解清掃料",
         "冷暖房設備整備料",
     ],
+    "deodorizingFee": [
+        "退去時ペット消臭料",
+        "退去時消臭料",
+        "ペット消臭料",
+        "ペット消臭費",
+        "ペット消臭代",
+        "消臭料",
+        "消臭費",
+    ],
+    "waterDrainFee": ["退去時エコジョーズ水落費用", "エコジョーズ水落費用", "水落費用", "水落し費用", "水抜き費用"],
     "gasLeaseFee": ["北ガス給湯器リース料", "水道料金", "水道料", "定額水道料", "上下水道料"],
     "townFee": ["町内会費", "町会費"],
     "monthlyGuaranteeFee": ["ライフ月額保証料", "月額保証料", "月額手数料", "月次保証料", "月額事務手数料"],
@@ -178,6 +199,10 @@ def pick_labeled_money(labels: list[str], text: str) -> tuple[int, str, str]:
             chunk = searchable_text[start : start + 180]
             next_item = chunk.find("・", len(label))
             item_text = chunk[:next_item] if next_item != -1 else chunk
+            prefix = searchable_text[max(0, start - 16) : start]
+            if label in {"清掃料", "清掃費"} and re.search(r"(エアコン|暖房|ストーブ|冷暖房|FF)", prefix + item_text):
+                search_from = start + len(label)
+                continue
             if next_item != -1:
                 following = chunk[next_item + 1 :]
                 if following.startswith("退去時払い可"):
@@ -262,6 +287,8 @@ def parse_property(text: str) -> dict:
     support_fee, support_label, support_timing = pick_labeled_money(fee_rules["supportFee"], text)
     ac_cleaning_fee, ac_cleaning_label, ac_cleaning_timing = pick_labeled_money(fee_rules["acCleaningFee"], text)
     stove_fee, stove_label, stove_timing = pick_labeled_money(fee_rules["stoveMaintenanceFee"], text)
+    deodorizing_fee, deodorizing_label, deodorizing_timing = pick_labeled_money(fee_rules["deodorizingFee"], text)
+    water_drain_fee, water_drain_label, water_drain_timing = pick_labeled_money(fee_rules["waterDrainFee"], text)
     gas_lease_fee, gas_lease_label, gas_lease_timing = pick_labeled_money(fee_rules["gasLeaseFee"], text)
     inquiry = pick(r"お問い合わせ番号\s*([^\n]+)", text)
     free_rent = pick(r"(無条件FR\d+か月対象)", text)
@@ -317,6 +344,8 @@ def parse_property(text: str) -> dict:
             "parkingFee": parking_fee,
             "acCleaningFee": ac_cleaning_fee,
             "stoveMaintenanceFee": stove_fee,
+            "deodorizingFee": deodorizing_fee,
+            "waterDrainFee": water_drain_fee,
             "monthlyGuaranteeFee": monthly_guarantee_fee,
             "guaranteePersonal": initial_guarantee,
             "guaranteeCorporate": 0,
@@ -336,6 +365,8 @@ def parse_property(text: str) -> dict:
                 "gasLeaseFee": gas_lease_label,
                 "acCleaningFee": ac_cleaning_label,
                 "stoveMaintenanceFee": stove_label,
+                "deodorizingFee": deodorizing_label,
+                "waterDrainFee": water_drain_label,
                 "monthlyGuaranteeFee": monthly_guarantee_label,
                 "guaranteePersonal": initial_guarantee_label,
                 "keyMoney": "礼金",
@@ -348,6 +379,8 @@ def parse_property(text: str) -> dict:
                 "gasLeaseFee": gas_lease_timing,
                 "acCleaningFee": ac_cleaning_timing,
                 "stoveMaintenanceFee": stove_timing,
+                "deodorizingFee": deodorizing_timing,
+                "waterDrainFee": water_drain_timing,
                 "monthlyGuaranteeFee": "monthly" if monthly_guarantee_fee else monthly_guarantee_timing,
                 "keyMoney": "initial",
             },
