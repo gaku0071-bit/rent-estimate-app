@@ -67,6 +67,8 @@ const feeDefinitions = [
   ["北ガス給湯器リース料", "gasLeaseFee", "monthly", true, "monthly"],
   ["エアコン洗浄料", "acCleaningFee", "optionalAc", false, "initial"],
   ["ストーブ整備料", "stoveMaintenanceFee", "initial", false, "initial"],
+  ["ペット消臭料", "deodorizingFee", "initial", false, "moveout"],
+  ["エコジョーズ水落費用", "waterDrainFee", "initial", false, "moveout"],
   ["駐車場", "parkingFee", "optionalParking", false, "monthly"],
 ];
 
@@ -187,7 +189,7 @@ function moneyToInt(value) {
 function amountNear(text, pattern) {
   const match = String(text || "").match(pattern);
   if (!match) return 0;
-  const amounts = match[0].match(/[\d,]+円/g) || [];
+  const amounts = match[0].match(/[\d,，]+円/g) || [];
   return amounts.length ? moneyToInt(amounts.at(-1)) : 0;
 }
 
@@ -306,15 +308,47 @@ function applyCsvEnhancement(item) {
   const notes = `${item["備考"] || ""}\n${item["現況"] || ""}`;
   const applied = [];
 
-  const keyFee = amountNear(notes, /(?:カギ|鍵|シリンダー)[^。・\n\r]*?[\d,]+円/);
+  const keyFee = amountNear(notes, /(?:カギ|鍵|カードキー|シリンダー)[^。・\n\r]*?[\d,，]+円/);
   if (keyFee) {
     setFeeAmount("keyFee", keyFee);
-    setFeeLabel("keyFee", /シリンダー/.test(notes) ? "シリンダー交換料" : "カギ交換費用");
+    setFeeLabel("keyFee", /カードキー/.test(notes) ? "カードキー設定料" : /シリンダー/.test(notes) ? "シリンダー交換料" : "カギ交換費用");
     setFeeTiming("keyFee", "initial");
     applied.push("鍵交換");
   }
 
-  const cleaningFee = amountNear(notes, /(?:清掃料|清掃費|クリーニング|水廻り?消毒料|水回り?消毒料)[^。・\n\r]*?[\d,]+円/);
+  const acCleaningFee = amountNear(notes, /(?:エアコン洗浄料|エアコン清掃料|エアコン清掃|エアコン整備料|エアコン分解清掃料|エアコン分解整備料|エアコンクリーニング|エアコンクリーニング代)[^。・\n\r]*?[\d,，]+円/);
+  if (acCleaningFee) {
+    setFeeAmount("acCleaningFee", acCleaningFee);
+    setFeeLabel("acCleaningFee", /分解整備/.test(notes) ? "エアコン分解整備料" : /分解清掃/.test(notes) ? "エアコン分解清掃料" : "エアコン清掃料");
+    setFeeTiming("acCleaningFee", /退去時/.test(notes) ? "moveout" : "initial");
+    applied.push("エアコン清掃");
+  }
+
+  const stoveFee = amountNear(notes, /(?:ストーブ整備料|暖房整備料|暖房分解清掃料|暖房分解清掃料金|冷暖房機器清掃料|冷暖房機器清掃費|FF分解清掃料|FF分解清掃費|FF分解清掃費用|FFストーブ分解清掃料)[^。・\n\r]*?[\d,，]+円/);
+  if (stoveFee) {
+    setFeeAmount("stoveMaintenanceFee", stoveFee);
+    setFeeLabel("stoveMaintenanceFee", /FF/.test(notes) ? "FF分解清掃料" : "暖房分解清掃料");
+    setFeeTiming("stoveMaintenanceFee", /退去時/.test(notes) ? "moveout" : "initial");
+    applied.push("暖房・ストーブ整備");
+  }
+
+  const deodorizingFee = amountNear(notes, /(?:退去時ペット消臭料|退去時消臭料|ペット消臭料|ペット消臭費|ペット消臭代|消臭料|消臭費)[^。・\n\r]*?[\d,，]+円/);
+  if (deodorizingFee) {
+    setFeeAmount("deodorizingFee", deodorizingFee);
+    setFeeLabel("deodorizingFee", /ペット/.test(notes) ? "ペット消臭料" : "消臭料");
+    setFeeTiming("deodorizingFee", /契約時/.test(notes) && !/退去時/.test(notes) ? "initial" : "moveout");
+    applied.push("消臭料");
+  }
+
+  const waterDrainFee = amountNear(notes, /(?:退去時エコジョーズ水落費用|エコジョーズ水落費用|水落費用|水落し費用|水抜き費用)[^。・\n\r]*?[\d,，]+円/);
+  if (waterDrainFee) {
+    setFeeAmount("waterDrainFee", waterDrainFee);
+    setFeeLabel("waterDrainFee", /エコジョーズ/.test(notes) ? "エコジョーズ水落費用" : "水落費用");
+    setFeeTiming("waterDrainFee", /契約時/.test(notes) && !/退去時/.test(notes) ? "initial" : "moveout");
+    applied.push("水落費用");
+  }
+
+  const cleaningFee = amountNear(notes, /(?:室内清掃料|室内清掃費|退去時室内清掃料|退去時清掃料|退去時清掃費|ハウスクリーニング料?|水廻り?消毒料|水回り?消毒料|水廻り?消毒費|水回り?消毒費|水廻り?消毒料金|水回り?消毒料金|水廻り?消毒量|家電清掃料)[^。・\n\r]*?[\d,，]+円/);
   if (cleaningFee) {
     setFeeAmount("cleaningFee", cleaningFee);
     setFeeLabel("cleaningFee", /水[廻回]り?消毒料/.test(notes) ? "水廻り消毒料" : /クリーニング/.test(notes) ? "ハウスクリーニング" : "清掃料");
@@ -322,14 +356,22 @@ function applyCsvEnhancement(item) {
     applied.push("清掃料");
   }
 
-  const supportFee = amountNear(notes, /(?:24時間|サポート|リペア)[^。・\n\r]*?[\d,]+円/);
+  const supportFee = amountNear(notes, /(?:24時間|サポート|リペア|安心|緊急)[^。・\n\r]*?[\d,，]+円/);
   if (supportFee) {
     setFeeAmount("supportFee", supportFee);
     setFeeTiming("supportFee", "monthly");
     applied.push("24時間系");
   }
 
-  const fixedGuarantee = amountNear(notes, /初回保証料[^。・\n\r]*?[\d,]+円/);
+  const waterFee = amountNear(notes, /(?:水道料金|水道料|定額水道料|上下水道料)[^。・\n\r]*?[\d,，]+円/);
+  if (waterFee) {
+    setFeeAmount("gasLeaseFee", waterFee);
+    setFeeLabel("gasLeaseFee", /定額/.test(notes) ? "定額水道料" : "水道料");
+    setFeeTiming("gasLeaseFee", "monthly");
+    applied.push("水道料");
+  }
+
+  const fixedGuarantee = amountNear(notes, /初回保証料[^。・\n\r]*?[\d,，]+円/);
   if (fixedGuarantee) {
     state.settings.guaranteeMode = "fixed";
     setFeeAmount("guaranteePersonal", fixedGuarantee);
@@ -719,6 +761,8 @@ function estimateRowOrder(row) {
     cleaningFee: 50,
     acCleaningFee: 51,
     stoveMaintenanceFee: 52,
+    deodorizingFee: 53,
+    waterDrainFee: 54,
     keyFee: 60,
     insuranceFee: 70,
     guaranteePersonal: 80,
