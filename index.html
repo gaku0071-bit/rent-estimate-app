@@ -22,6 +22,10 @@
               <input id="pdfInput" type="file" accept="application/pdf" />
               PDF読込
             </label>
+            <label class="upload">
+              <input id="csvInput" type="file" accept=".csv,text/csv" />
+              CSV読込
+            </label>
             <button id="sampleButton" type="button">添付PDFの内容</button>
             <button id="resetButton" type="button">リセット</button>
             <button id="printButton" type="button">A4印刷</button>
@@ -29,6 +33,18 @@
         </header>
 
         <div id="status" class="status">PDFを読み込むと物件概要と費用が自動入力されます。</div>
+
+        <section id="csvPanel" class="panel csv-panel" hidden>
+          <div class="section-title">
+            <h2>CSV補強データ</h2>
+            <button id="applyCsvButton" type="button">選択したCSV備考で補強</button>
+          </div>
+          <div class="csv-controls">
+            <label>物件検索<input id="csvSearch" placeholder="PDFと照合する物件名・号室で検索" /></label>
+            <label>CSV内の物件<select id="csvSelect"></select></label>
+          </div>
+          <div id="csvPreview" class="csv-preview"></div>
+        </section>
 
         <section class="panel">
           <div class="section-title">
@@ -52,6 +68,7 @@
           <div class="checks">
             <label><input id="includeParking" type="checkbox" /> 駐車場を含める</label>
             <label><input id="includeAcCleaning" type="checkbox" checked /> エアコン洗浄料を契約時に含める</label>
+            <label><input id="includePetFee" type="checkbox" /> ペット飼育費用を含める</label>
             <label><input id="includeFreeRentNote" type="checkbox" checked /> フリーレント注記を表示</label>
           </div>
         </section>
