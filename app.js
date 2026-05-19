@@ -47,6 +47,8 @@ const state = {
   estimateType: "personal",
   fees: [],
   lastData: null,
+  csvRows: [],
+  filteredCsvRows: [],
 };
 
 const feeDefinitions = [
@@ -96,6 +98,272 @@ function textValue(id) {
   return el(id).value.trim();
 }
 
+function setFeeAmount(id, amount) {
+  const fee = state.fees.find((item) => item.id === id);
+  if (fee) fee.amount = amount;
+}
+
+function setFeeTiming(id, timing) {
+  const fee = state.fees.find((item) => item.id === id);
+  if (fee) fee.timing = timing;
+}
+
+function setFeeLabel(id, label) {
+  const fee = state.fees.find((item) => item.id === id);
+  if (fee && label) fee.label = label;
+}
+
+function parseCsvText(text) {
+  const rows = [];
+  let row = [];
+  let value = "";
+  let quoted = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (quoted) {
+      if (char === '"' && next === '"') {
+        value += '"';
+        i += 1;
+      } else if (char === '"') {
+        quoted = false;
+      } else {
+        value += char;
+      }
+    } else if (char === '"') {
+      quoted = true;
+    } else if (char === ",") {
+      row.push(value);
+      value = "";
+    } else if (char === "\n") {
+      row.push(value);
+      rows.push(row);
+      row = [];
+      value = "";
+    } else if (char !== "\r") {
+      value += char;
+    }
+  }
+
+  if (value || row.length) {
+    row.push(value);
+    rows.push(row);
+  }
+  return rows;
+}
+
+function csvRowsToObjects(rows) {
+  const headerIndex = rows.findIndex((row) => row.includes("物件") && row.includes("号室") && row.includes("家賃"));
+  if (headerIndex < 0) return [];
+  const headers = rows[headerIndex].map((header) => header.trim());
+  return rows
+    .slice(headerIndex + 1)
+    .map((row) => Object.fromEntries(headers.map((header, index) => [header, (row[index] || "").trim()])))
+    .filter((item) => item["物件"] || item["住所"] || item["号室"]);
+}
+
+function moneyFromManYen(value) {
+  const text = String(value || "").replaceAll(",", "").trim();
+  if (!text || text === "---" || text === "なし") return 0;
+  const number = Number(text.match(/-?\d+(?:\.\d+)?/)?.[0] || 0);
+  return Math.round(number * 10000);
+}
+
+function monthValueToAmount(value, rent) {
+  const text = String(value || "").trim();
+  if (!text || text === "---" || text === "なし") return 0;
+  const month = Number(text.match(/(-?\d+(?:\.\d+)?)\s*月/)?.[1] || "");
+  if (!Number.isNaN(month) && month > 0) return Math.round(rent * month);
+  if (/円/.test(text)) return moneyToInt(text);
+  return 0;
+}
+
+function moneyToInt(value) {
+  const digits = String(value || "").replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
+}
+
+function amountNear(text, pattern) {
+  const match = String(text || "").match(pattern);
+  if (!match) return 0;
+  const amounts = match[0].match(/[\d,]+円/g) || [];
+  return amounts.length ? moneyToInt(amounts.at(-1)) : 0;
+}
+
+function parkingAmount(value) {
+  const text = String(value || "");
+  if (!text || /無し|なし|満車|---|無料/.test(text)) return 0;
+  return moneyToInt(text);
+}
+
+function normalizeBuilt(value) {
+  const text = String(value || "").trim();
+  const match = text.match(/(\d{4})[/.年](\d{1,2})/);
+  if (!match) return text;
+  return `${match[1]}年${match[2].padStart(2, "0")}月`;
+}
+
+function csvOptionLabel(item) {
+  return `${item["物件"] || "物件名なし"} ${item["号室"] || ""} / ${item["住所"] || ""}`;
+}
+
+function normalizeMatchText(value) {
+  return String(value || "")
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (char) => String.fromCharCode(char.charCodeAt(0) - 0xfee0))
+    .replace(/\s+/g, "")
+    .replace(/[・･\-.．ー‐]/g, "")
+    .toLowerCase();
+}
+
+function normalizeRoom(value) {
+  return String(value || "").match(/[A-Za-z]?\d+[A-Za-z]?/)?.[0]?.toLowerCase() || "";
+}
+
+function matchingCsvItem() {
+  if (!state.csvRows.length) return null;
+  const title = normalizeMatchText(textValue("propertyTitle") || state.property?.title);
+  const room = normalizeRoom(textValue("room") || state.property?.room);
+  if (!title) return null;
+  const titleMatches = state.csvRows.filter((item) => normalizeMatchText(item["物件"]) === title);
+  if (room) {
+    const exact = titleMatches.find((item) => normalizeRoom(item["号室"]) === room);
+    if (exact) return exact;
+  }
+  return titleMatches.length === 1 ? titleMatches[0] : null;
+}
+
+function selectedCsvItem() {
+  const index = Number(el("csvSelect").value);
+  return state.filteredCsvRows[index] || null;
+}
+
+function renderCsvSelector() {
+  const query = textValue("csvSearch").toLowerCase();
+  state.filteredCsvRows = state.csvRows
+    .filter((item) => csvOptionLabel(item).toLowerCase().includes(query))
+    .slice(0, 300);
+
+  el("csvSelect").innerHTML = state.filteredCsvRows
+    .map((item, index) => `<option value="${index}">${escapeHtml(csvOptionLabel(item))}</option>`)
+    .join("");
+  renderCsvPreview();
+}
+
+function renderCsvPreview() {
+  const item = selectedCsvItem();
+  el("csvPreview").innerHTML = item
+    ? `
+      <strong>${escapeHtml(item["物件"] || "-")} ${escapeHtml(item["号室"] || "")}</strong><br>
+      ${escapeHtml(item["住所"] || "-")} / ${escapeHtml(item["交通"] || "-")}<br>
+      家賃 ${escapeHtml(item["家賃"] || "-")}万円・管理費 ${escapeHtml(item["管理費"] || "-")}万円・敷 ${escapeHtml(item["敷"] || "-")}・礼 ${escapeHtml(item["礼"] || "-")}・駐車場 ${escapeHtml(item["P"] || "-")}
+    `
+    : "該当する物件がありません。";
+}
+
+function applyCsvItem(item) {
+  if (!item) return;
+  const rent = moneyFromManYen(item["家賃"]);
+  const commonFee = moneyFromManYen(item["管理費"]);
+  const parkingFee = parkingAmount(item["P"]);
+
+  el("propertyTitle").value = item["物件"] || "";
+  el("room").value = item["号室"] || "";
+  el("address").value = item["住所"] || "";
+  el("access").value = item["交通"] || "";
+  el("layout").value = item["間取"] || "";
+  el("area").value = item["広さ"] ? `${item["広さ"]}㎡` : "";
+  el("built").value = normalizeBuilt(item["築年"]);
+
+  state.property = {
+    ...(state.property || {}),
+    title: item["物件"] || "",
+    room: item["号室"] || "",
+    address: item["住所"] || "",
+    access: item["交通"] || "",
+    layout: item["間取"] || "",
+    area: item["広さ"] ? `${item["広さ"]}㎡` : "",
+    built: normalizeBuilt(item["築年"]),
+    moveIn: item["現況"] || state.property?.moveIn || "",
+  };
+
+  setFeeAmount("rent", rent);
+  setFeeAmount("commonFee", commonFee);
+  setFeeAmount("deposit", monthValueToAmount(item["敷"], rent));
+  setFeeAmount("keyMoney", monthValueToAmount(item["礼"], rent));
+  setFeeAmount("parkingFee", parkingFee);
+  el("includeParking").checked = parkingFee > 0;
+
+  syncDerivedFees();
+  renderGuaranteeTargets();
+  updateGuaranteeFeeInput();
+  renderFeeEditor();
+  renderEstimate();
+}
+
+function applyCsvEnhancement(item) {
+  if (!item) return [];
+  const notes = `${item["備考"] || ""}\n${item["現況"] || ""}`;
+  const applied = [];
+
+  const keyFee = amountNear(notes, /(?:カギ|鍵|シリンダー)[^。・\n\r]*?[\d,]+円/);
+  if (keyFee) {
+    setFeeAmount("keyFee", keyFee);
+    setFeeLabel("keyFee", /シリンダー/.test(notes) ? "シリンダー交換料" : "カギ交換費用");
+    setFeeTiming("keyFee", "initial");
+    applied.push("鍵交換");
+  }
+
+  const cleaningFee = amountNear(notes, /(?:清掃料|清掃費|クリーニング|水廻り?消毒料|水回り?消毒料)[^。・\n\r]*?[\d,]+円/);
+  if (cleaningFee) {
+    setFeeAmount("cleaningFee", cleaningFee);
+    setFeeLabel("cleaningFee", /水[廻回]り?消毒料/.test(notes) ? "水廻り消毒料" : /クリーニング/.test(notes) ? "ハウスクリーニング" : "清掃料");
+    setFeeTiming("cleaningFee", /退去時/.test(notes) ? "moveout" : "initial");
+    applied.push("清掃料");
+  }
+
+  const supportFee = amountNear(notes, /(?:24時間|サポート|リペア)[^。・\n\r]*?[\d,]+円/);
+  if (supportFee) {
+    setFeeAmount("supportFee", supportFee);
+    setFeeTiming("supportFee", "monthly");
+    applied.push("24時間系");
+  }
+
+  const fixedGuarantee = amountNear(notes, /初回保証料[^。・\n\r]*?[\d,]+円/);
+  if (fixedGuarantee) {
+    state.settings.guaranteeMode = "fixed";
+    setFeeAmount("guaranteePersonal", fixedGuarantee);
+    setFeeLabel("guaranteePersonal", "初回保証料");
+    applied.push("初回保証料");
+  }
+
+  const monthlyRate = Number(notes.match(/(?:月額手数料|月額保証料|月次保証料)[^%\d]*(\d+(?:\.\d+)?)%/)?.[1] || 0);
+  if (monthlyRate) {
+    state.settings.monthlyGuaranteeMode = "percent";
+    state.settings.monthlyGuaranteeRate = monthlyRate;
+    setFeeLabel("monthlyGuaranteeFee", `月額保証料（${monthlyRate}%）`);
+    setFeeTiming("monthlyGuaranteeFee", "monthly");
+    applied.push("月額保証料");
+  } else if (/月額手数料や更新料はありません|月額手数料なし|月額保証料なし/.test(notes)) {
+    state.settings.monthlyGuaranteeMode = "fixed";
+    setFeeAmount("monthlyGuaranteeFee", 0);
+    applied.push("月額保証料なし");
+  }
+
+  syncDerivedFees();
+  renderGuaranteeTargets();
+  updateGuaranteeFeeInput();
+  renderFeeEditor();
+  renderEstimate();
+  return applied;
+}
+
+function enhanceFromCsvMatch() {
+  const item = matchingCsvItem();
+  const applied = applyCsvEnhancement(item);
+  return { item, applied };
+}
+
 function syncProrateFromMoveInDate() {
   const value = el("moveInDate").value;
   if (!value) {
@@ -141,6 +409,11 @@ function resetToBlank() {
   el("includeAcCleaning").checked = false;
   el("includeFreeRentNote").checked = false;
   el("pdfInput").value = "";
+  el("csvInput").value = "";
+  el("csvSearch").value = "";
+  state.csvRows = [];
+  state.filteredCsvRows = [];
+  el("csvPanel").hidden = true;
   renderGuaranteeTargets();
   renderFeeEditor();
   renderEstimate();
@@ -662,10 +935,37 @@ async function parsePdf(file) {
   if (!response.ok) throw new Error("PDF解析に失敗しました。");
   const data = await response.json();
   loadData(data);
+  const csvResult = enhanceFromCsvMatch();
   const choices = timingChoiceFees();
+  const csvMessage = csvResult.item
+    ? ` CSV補強: ${csvResult.item["物件"] || ""} ${csvResult.item["号室"] || ""}${csvResult.applied.length ? `（${csvResult.applied.join("、")}）` : "（該当備考なし）"}`
+    : state.csvRows.length
+    ? " CSV補強: 同じ物件が見つかりませんでした。"
+    : "";
   el("status").textContent = choices.length
-    ? `${file.name} から物件情報を読み込みました。支払時期の選択が必要な項目があります。`
-    : `${file.name} から物件情報を読み込みました。`;
+    ? `${file.name} から物件情報を読み込みました。支払時期の選択が必要な項目があります。${csvMessage}`
+    : `${file.name} から物件情報を読み込みました。${csvMessage}`;
+}
+
+function readFileText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("CSV読込に失敗しました。"));
+    reader.readAsText(file, "utf-8");
+  });
+}
+
+async function parseCsv(file) {
+  el("status").textContent = "CSVを読み込んでいます。";
+  const text = await readFileText(file);
+  const rows = csvRowsToObjects(parseCsvText(text));
+  if (!rows.length) throw new Error("CSVの列を読み取れませんでした。");
+  state.csvRows = rows;
+  el("csvPanel").hidden = false;
+  el("csvSearch").value = "";
+  renderCsvSelector();
+  el("status").textContent = `${file.name} から ${rows.length} 件の物件を読み込みました。次回PDF読込時に同じ物件の備考で自動補強します。`;
 }
 
 document.addEventListener("input", (event) => {
@@ -689,6 +989,16 @@ document.addEventListener("change", (event) => {
     parsePdf(target.files[0]).catch((error) => {
       el("status").textContent = error.message;
     });
+    return;
+  }
+  if (target.id === "csvInput" && target.files[0]) {
+    parseCsv(target.files[0]).catch((error) => {
+      el("status").textContent = error.message;
+    });
+    return;
+  }
+  if (target.id === "csvSelect") {
+    renderCsvPreview();
     return;
   }
   if (target.dataset?.guaranteeTarget) {
@@ -752,6 +1062,18 @@ el("addFeeButton").addEventListener("click", () => {
   state.fees.push({ id: `custom-${Date.now()}`, label: "追加項目", amount: 0, type: "initial", timing: "initial", guaranteeTarget: false, derived: false });
   renderGuaranteeTargets();
   renderFeeEditor();
+});
+
+el("csvSearch").addEventListener("input", renderCsvSelector);
+
+el("applyCsvButton").addEventListener("click", () => {
+  const item = selectedCsvItem();
+  if (!item) {
+    el("status").textContent = "CSV補強に使う物件を選択してください。";
+    return;
+  }
+  const applied = applyCsvEnhancement(item);
+  el("status").textContent = `${item["物件"] || "選択した物件"} ${item["号室"] || ""} のCSV備考で補強しました。${applied.length ? `反映: ${applied.join("、")}` : "反映できる費用項目は見つかりませんでした。"}`;
 });
 
 el("printButton").addEventListener("click", () => window.print());
