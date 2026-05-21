@@ -60,6 +60,7 @@ const feeDefinitions = [
   ["初回保証料", "guaranteePersonal", "personal", false, "initial"],
   ["保険料（2年）", "insuranceFee", "initial", false, "initial"],
   ["室内清掃費用", "cleaningFee", "initial", false, "initial"],
+  ["水廻り消毒料", "waterSanitizingFee", "initial", false, "initial"],
   ["カギ交換費用", "keyFee", "initial", false, "initial"],
   ["24時間管理料", "supportFee", "monthly", true, "monthly"],
   ["月額保証料", "monthlyGuaranteeFee", "monthly", false, "monthly"],
@@ -67,7 +68,8 @@ const feeDefinitions = [
   ["北ガス給湯器リース料", "gasLeaseFee", "monthly", true, "monthly"],
   ["エアコン洗浄料", "acCleaningFee", "optionalAc", false, "initial"],
   ["ストーブ整備料", "stoveMaintenanceFee", "initial", false, "initial"],
-  ["ペット消臭料", "deodorizingFee", "initial", false, "moveout"],
+  ["ペット消臭料", "deodorizingFee", "optionalPet", false, "moveout"],
+  ["ペット関連費用", "petFee", "optionalPet", false, "initial"],
   ["エコジョーズ水落費用", "waterDrainFee", "initial", false, "moveout"],
   ["駐車場", "parkingFee", "optionalParking", false, "monthly"],
 ];
@@ -295,6 +297,7 @@ function applyCsvItem(item) {
   setFeeAmount("keyMoney", monthValueToAmount(item["礼"], rent));
   setFeeAmount("parkingFee", parkingFee);
   el("includeParking").checked = parkingFee > 0;
+  el("includePetFee").checked = false;
 
   syncDerivedFees();
   renderGuaranteeTargets();
@@ -308,7 +311,7 @@ function applyCsvEnhancement(item) {
   const notes = `${item["備考"] || ""}\n${item["現況"] || ""}`;
   const applied = [];
 
-  const keyFee = amountNear(notes, /(?:カギ|鍵|カードキー|シリンダー)[^。・\n\r]*?[\d,，]+円/);
+  const keyFee = amountNear(notes, /(?:カギ|鍵|カードキー|シリンダー|シリンダ)[^。・\n\r]*?[\d,，]+円/);
   if (keyFee) {
     setFeeAmount("keyFee", keyFee);
     setFeeLabel("keyFee", /カードキー/.test(notes) ? "カードキー設定料" : /シリンダー/.test(notes) ? "シリンダー交換料" : "カギ交換費用");
@@ -340,6 +343,17 @@ function applyCsvEnhancement(item) {
     applied.push("消臭料");
   }
 
+  const petFee = amountNear(notes, /(?:ペット礼金|ペット飼育時礼金|ペット飼育料|ペット飼育費|ペット飼育時費用|ペット一時金|ペット清掃料|ペット清掃費|ペット消毒料|ペット消毒費)[^。・\n\r]*?[\d,，]+円/);
+  if (petFee) {
+    setFeeAmount("petFee", petFee);
+    setFeeLabel(
+      "petFee",
+      /ペット飼育時礼金|ペット礼金/.test(notes) ? "ペット礼金" : /清掃/.test(notes) ? "ペット清掃料" : /消毒/.test(notes) ? "ペット消毒料" : "ペット関連費用",
+    );
+    setFeeTiming("petFee", /退去時/.test(notes) ? "moveout" : "initial");
+    applied.push("ペット関連費用");
+  }
+
   const waterDrainFee = amountNear(notes, /(?:退去時エコジョーズ水落費用|エコジョーズ水落費用|水落費用|水落し費用|水抜き費用)[^。・\n\r]*?[\d,，]+円/);
   if (waterDrainFee) {
     setFeeAmount("waterDrainFee", waterDrainFee);
@@ -348,17 +362,26 @@ function applyCsvEnhancement(item) {
     applied.push("水落費用");
   }
 
-  const cleaningFee = amountNear(notes, /(?:室内清掃料|室内清掃費|退去時室内清掃料|退去時清掃料|退去時清掃費|ハウスクリーニング料?|水廻り?消毒料|水回り?消毒料|水廻り?消毒費|水回り?消毒費|水廻り?消毒料金|水回り?消毒料金|水廻り?消毒量|家電清掃料)[^。・\n\r]*?[\d,，]+円/);
+  const cleaningFee = amountNear(notes, /(?:室内清掃料|室内清掃費|退去時室内清掃料|退去時清掃料|退去時清掃費|ハウスクリーニング料?|家電清掃料|清掃料)[^。・\n\r]*?[\d,，]+円/);
   if (cleaningFee) {
     setFeeAmount("cleaningFee", cleaningFee);
-    setFeeLabel("cleaningFee", /水[廻回]り?消毒料/.test(notes) ? "水廻り消毒料" : /クリーニング/.test(notes) ? "ハウスクリーニング" : "清掃料");
+    setFeeLabel("cleaningFee", /クリーニング/.test(notes) ? "ハウスクリーニング" : "清掃料");
     setFeeTiming("cleaningFee", /退去時/.test(notes) ? "moveout" : "initial");
     applied.push("清掃料");
   }
 
-  const supportFee = amountNear(notes, /(?:24時間|サポート|リペア|安心|緊急)[^。・\n\r]*?[\d,，]+円/);
+  const waterSanitizingFee = amountNear(notes, /(?:退去時水廻消毒料|退去時水廻り消毒料|退去時水回消毒料|退去時水回り消毒料|水廻り?消毒料|水回り?消毒料|水廻り?消毒費|水回り?消毒費|水廻り?消毒料金|水回り?消毒料金|水廻り?消毒量)[^。・\n\r]*?[\d,，]+円/);
+  if (waterSanitizingFee) {
+    setFeeAmount("waterSanitizingFee", waterSanitizingFee);
+    setFeeLabel("waterSanitizingFee", "水廻り消毒料");
+    setFeeTiming("waterSanitizingFee", /退去時/.test(notes) ? "moveout" : "initial");
+    applied.push("水廻り消毒料");
+  }
+
+  const supportFee = amountNear(notes, /(?:24時間管理料|24時間管理費|24時間サポート料|24時間サポート費|シャーメゾンSUPPORT24|ギムサポートクラブ|リペアサービス|夜間サポート|24時間サポート|安心サポート|緊急サポート|新生活サポート|暮らしサポート|ライフサポート|管理サポート)[^。・\n\r]*?[\d,，]+円/);
   if (supportFee) {
     setFeeAmount("supportFee", supportFee);
+    setFeeLabel("supportFee", /シャーメゾン/.test(notes) ? "シャーメゾンSUPPORT24" : /ギム/.test(notes) ? "ギムサポートクラブ" : /リペア/.test(notes) ? "リペアサービス" : "24時間サポート");
     setFeeTiming("supportFee", "monthly");
     applied.push("24時間系");
   }
@@ -377,17 +400,37 @@ function applyCsvEnhancement(item) {
     setFeeAmount("guaranteePersonal", fixedGuarantee);
     setFeeLabel("guaranteePersonal", "初回保証料");
     applied.push("初回保証料");
+  } else {
+    const initialRate = Number(notes.match(/初回保証料[^%\d]*(\d+(?:\.\d+)?)%/)?.[1] || 0);
+    if (initialRate) {
+      state.settings.guaranteeMode = "percent";
+      el("guaranteeRate").value = initialRate;
+      applied.push(`初回保証料${initialRate}%`);
+    }
   }
 
-  const monthlyRate = Number(notes.match(/(?:月額手数料|月額保証料|月次保証料)[^%\d]*(\d+(?:\.\d+)?)%/)?.[1] || 0);
+  const monthlyRate = Number(notes.match(/(?:月額手数料|月額保証料|月次保証料|支払手数料)[^%\d]*(\d+(?:\.\d+)?)%/)?.[1] || 0);
+  const monthlyFixed =
+    amountNear(notes, /(?:月額手数料|月額保証料|月次保証料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料)[^。・\n\r]*?[\d,，]+円/) ||
+    amountNear(notes, /月額\s*[:：]?\s*[\d,，]+円/);
+  const monthlyFixedExtras = [...notes.matchAll(/(?:\+|＋)\s*[^+＋\d円]{0,16}?([\d,，]+)\s*円/g)].reduce((sum, match) => sum + moneyToInt(match[1]), 0);
   if (monthlyRate) {
     state.settings.monthlyGuaranteeMode = "percent";
     state.settings.monthlyGuaranteeRate = monthlyRate;
-    setFeeLabel("monthlyGuaranteeFee", `月額保証料（${monthlyRate}%）`);
+    state.settings.monthlyGuaranteeFixedExtra = monthlyFixedExtras;
+    setFeeLabel("monthlyGuaranteeFee", monthlyFixedExtras ? `月額保証料（${monthlyRate}%＋${yen.format(monthlyFixedExtras)}）` : `月額保証料（${monthlyRate}%）`);
+    setFeeTiming("monthlyGuaranteeFee", "monthly");
+    applied.push("月額保証料");
+  } else if (monthlyFixed) {
+    state.settings.monthlyGuaranteeMode = "fixed";
+    state.settings.monthlyGuaranteeFixedExtra = 0;
+    setFeeAmount("monthlyGuaranteeFee", monthlyFixed);
+    setFeeLabel("monthlyGuaranteeFee", /収納代行/.test(notes) ? "収納代行手数料" : /支払/.test(notes) ? "支払手数料" : /口/.test(notes) ? "口座振替料" : "月額保証料");
     setFeeTiming("monthlyGuaranteeFee", "monthly");
     applied.push("月額保証料");
   } else if (/月額手数料や更新料はありません|月額手数料なし|月額保証料なし/.test(notes)) {
     state.settings.monthlyGuaranteeMode = "fixed";
+    state.settings.monthlyGuaranteeFixedExtra = 0;
     setFeeAmount("monthlyGuaranteeFee", 0);
     applied.push("月額保証料なし");
   }
@@ -449,6 +492,7 @@ function resetToBlank() {
   el("guaranteeRate").value = 50;
   el("includeParking").checked = false;
   el("includeAcCleaning").checked = false;
+  el("includePetFee").checked = false;
   el("includeFreeRentNote").checked = false;
   el("pdfInput").value = "";
   el("csvInput").value = "";
@@ -487,6 +531,7 @@ function loadData(data) {
   syncProrateFromMoveInDate();
   el("includeParking").checked = Boolean(settings.includeParking);
   el("includeAcCleaning").checked = Boolean(settings.includeAcCleaning);
+  el("includePetFee").checked = Boolean(settings.includePetFee);
 
   state.property = property;
   state.settings = settings;
@@ -506,11 +551,16 @@ function loadData(data) {
 }
 
 function applicableFee(fee) {
+  if (isPetRelatedFee(fee)) return el("includePetFee").checked;
   if (fee.type === "personal") return state.estimateType === "personal";
   if (fee.type === "corporate") return state.estimateType === "corporate";
   if (fee.type === "optionalParking") return el("includeParking").checked;
   if (fee.type === "optionalAc") return el("includeAcCleaning").checked;
   return true;
+}
+
+function isPetRelatedFee(fee) {
+  return fee.type === "optionalPet" || /ペット/.test(fee.label || "");
 }
 
 function feeKindLabel(type) {
@@ -521,6 +571,7 @@ function feeKindLabel(type) {
     corporate: "法人",
     optionalParking: "月額",
     optionalAc: "任意",
+    optionalPet: "任意",
     discount: "控除",
   }[type] || "契約時";
 }
@@ -581,8 +632,9 @@ function syncMonthlyGuaranteeFee() {
   if (state.settings?.monthlyGuaranteeMode !== "percent") return;
   const monthlyGuaranteeFee = state.fees.find((fee) => fee.id === "monthlyGuaranteeFee");
   const rate = Number(state.settings?.monthlyGuaranteeRate || 0);
+  const fixedExtra = Number(state.settings?.monthlyGuaranteeFixedExtra || 0);
   if (monthlyGuaranteeFee && rate) {
-    monthlyGuaranteeFee.amount = Math.round(guaranteeBaseTotal() * (rate / 100));
+    monthlyGuaranteeFee.amount = Math.round(guaranteeBaseTotal() * (rate / 100)) + fixedExtra;
   }
 }
 
@@ -759,10 +811,12 @@ function estimateRowOrder(row) {
     townFee: 34,
     monthlyGuaranteeFee: 35,
     cleaningFee: 50,
-    acCleaningFee: 51,
-    stoveMaintenanceFee: 52,
-    deodorizingFee: 53,
-    waterDrainFee: 54,
+    waterSanitizingFee: 51,
+    acCleaningFee: 52,
+    stoveMaintenanceFee: 53,
+    deodorizingFee: 54,
+    petFee: 55,
+    waterDrainFee: 56,
     keyFee: 60,
     insuranceFee: 70,
     guaranteePersonal: 80,
@@ -830,7 +884,7 @@ function renderFeeEditor() {
         ${timingOptions().map((timing) => `<option value="${timing}" ${fee.timing === timing ? "selected" : ""}>${timingLabel(timing)}</option>`).join("")}
       </select>
       <select aria-label="区分" data-field="type" data-index="${index}">
-        ${["initial", "monthly", "personal", "corporate", "optionalParking", "optionalAc"].map((type) => `<option value="${type}" ${fee.type === type ? "selected" : ""}>${feeKindLabel(type)}</option>`).join("")}
+        ${["initial", "monthly", "personal", "corporate", "optionalParking", "optionalAc", "optionalPet"].map((type) => `<option value="${type}" ${fee.type === type ? "selected" : ""}>${feeKindLabel(type)}</option>`).join("")}
       </select>
       <button type="button" aria-label="削除" data-remove="${index}">×</button>
     `;

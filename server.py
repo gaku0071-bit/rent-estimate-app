@@ -19,6 +19,16 @@ DEFAULT_FEE_RULES = {
     "cleaningFee": [
         "室内清掃費用",
         "退去時室内清掃料",
+        "退去時清掃費",
+        "退去時清掃料",
+        "室内清掃料",
+        "室内清掃費",
+        "清掃料",
+        "ハウスクリーニング",
+        "ハウスクリーニング料",
+        "家電清掃料",
+    ],
+    "waterSanitizingFee": [
         "退去時水廻消毒料",
         "退去時水廻り消毒料",
         "退去時水回消毒料",
@@ -33,14 +43,6 @@ DEFAULT_FEE_RULES = {
         "水回り消毒料金",
         "水廻り消毒料金",
         "水回り消毒費",
-        "退去時清掃費",
-        "退去時清掃料",
-        "室内清掃料",
-        "室内清掃費",
-        "清掃料",
-        "ハウスクリーニング",
-        "ハウスクリーニング料",
-        "家電清掃料",
     ],
     "keyFee": [
         "カギ交換費用",
@@ -50,7 +52,9 @@ DEFAULT_FEE_RULES = {
         "カードキー設定変更料",
         "カードキー交換料",
         "シリンダー交換料",
+        "シリンダ交換料",
         "シリンダー交換費",
+        "シリンダ交換費",
         "鍵シリンダーローテーション費用",
         "鍵交換料",
         "鍵交換代",
@@ -59,6 +63,8 @@ DEFAULT_FEE_RULES = {
     "supportFee": [
         "24時間管理料",
         "24時間管理費",
+        "24時間サポート料",
+        "24時間サポート費",
         "シャーメゾンSUPPORT24",
         "シャーメゾンＳＵＰＰＯＲＴ２４",
         "ギムサポートクラブ",
@@ -67,6 +73,10 @@ DEFAULT_FEE_RULES = {
         "24時間サポート",
         "安心サポート",
         "緊急サポート",
+        "新生活サポート",
+        "暮らしサポート",
+        "ライフサポート",
+        "管理サポート",
     ],
     "acCleaningFee": [
         "エアコン洗浄料",
@@ -100,10 +110,32 @@ DEFAULT_FEE_RULES = {
         "消臭料",
         "消臭費",
     ],
+    "petFee": [
+        "ペット礼金",
+        "ペット飼育時礼金",
+        "ペット飼育料",
+        "ペット飼育費",
+        "ペット飼育時費用",
+        "ペット一時金",
+        "ペット清掃料",
+        "ペット清掃費",
+        "ペット消毒料",
+        "ペット消毒費",
+    ],
     "waterDrainFee": ["退去時エコジョーズ水落費用", "エコジョーズ水落費用", "水落費用", "水落し費用", "水抜き費用"],
     "gasLeaseFee": ["北ガス給湯器リース料", "水道料金", "水道料", "定額水道料", "上下水道料"],
     "townFee": ["町内会費", "町会費"],
-    "monthlyGuaranteeFee": ["ライフ月額保証料", "月額保証料", "月額手数料", "月次保証料", "月額事務手数料"],
+    "monthlyGuaranteeFee": [
+        "ライフ月額保証料",
+        "月額保証料",
+        "月額手数料",
+        "月次保証料",
+        "月額事務手数料",
+        "収納代行手数料",
+        "支払手数料",
+        "口座振替料",
+        "口振手数料",
+    ],
 }
 
 
@@ -232,6 +264,21 @@ def pick_labeled_money(labels: list[str], text: str) -> tuple[int, str, str]:
     return 0, labels[0], "initial"
 
 
+def extract_guarantee_note(text: str) -> str:
+    patterns = [
+        r"保証会社：(.+?)(?:。)?・保険\s*：",
+        r"保証会社(?:必須|利用必須|利用可)?[:：](.+?)(?:【契約時費用】|・保険|保険:|保険：|$)",
+        r"保証会社(?:必須|利用必須|利用可)?(.{0,260}?)(?:【契約時費用】|・保険|保険:|保険：|$)",
+        r"機関保証「?([^。・\n\r]{0,220})",
+        r"(D[‐-]support[^。・\n\r]{0,220})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.MULTILINE | re.DOTALL | re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
 def parse_deposit_or_key_money(label: str, rent: int, text: str) -> int:
     value = pick(rf"{label}\s*([^\n]+)", text)
     if not value or "なし" in value:
@@ -281,13 +328,20 @@ def parse_property(text: str) -> dict:
     parking_fee = money_to_int(pick(r"敷地内駐車場／[^／]*／([\d,，]+)円", text))
     town_fee, town_label, town_timing = pick_labeled_money(fee_rules["townFee"], text)
     cleaning_fee, cleaning_label, cleaning_timing = pick_labeled_money(fee_rules["cleaningFee"], text)
+    water_sanitizing_fee, water_sanitizing_label, water_sanitizing_timing = pick_labeled_money(
+        fee_rules["waterSanitizingFee"],
+        text,
+    )
     key_fee, key_label, key_timing = pick_labeled_money(fee_rules["keyFee"], text)
     insurance_text = pick(r"保険：(.+?)・\s*(?:町内会費|ハウスクリーニング|室内清掃費用|退去時室内清掃料|カギ交換費用|鍵交換料|カードキー設定交換料)", text)
     insurance_fee = money_to_int(pick(r"([\d,，]+)円", insurance_text))
     support_fee, support_label, support_timing = pick_labeled_money(fee_rules["supportFee"], text)
+    if support_fee and support_timing == "initial":
+        support_timing = "monthly"
     ac_cleaning_fee, ac_cleaning_label, ac_cleaning_timing = pick_labeled_money(fee_rules["acCleaningFee"], text)
     stove_fee, stove_label, stove_timing = pick_labeled_money(fee_rules["stoveMaintenanceFee"], text)
     deodorizing_fee, deodorizing_label, deodorizing_timing = pick_labeled_money(fee_rules["deodorizingFee"], text)
+    pet_fee, pet_label, pet_timing = pick_labeled_money(fee_rules["petFee"], text)
     water_drain_fee, water_drain_label, water_drain_timing = pick_labeled_money(fee_rules["waterDrainFee"], text)
     gas_lease_fee, gas_lease_label, gas_lease_timing = pick_labeled_money(fee_rules["gasLeaseFee"], text)
     inquiry = pick(r"お問い合わせ番号\s*([^\n]+)", text)
@@ -298,23 +352,41 @@ def parse_property(text: str) -> dict:
     key_money_text = pick(r"礼金\s*([^\n]+)", text)
     key_money = parse_deposit_or_key_money("礼金", rent, text)
 
-    guarantee_note = pick(r"保証会社：(.+?)(?:。)?・保険\s*：", text)
+    guarantee_note = extract_guarantee_note(text)
     monthly_subtotal = rent + common_fee + town_fee + support_fee + gas_lease_fee
-    monthly_guarantee_rate = pick_percent(r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料)[^\d]*(\d+(?:\.\d+)?)%", guarantee_note)
+    guarantee_text = f"{guarantee_note}\n{text}" if guarantee_note else text
+    monthly_guarantee_rate = pick_percent(
+        r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|支払手数料)[^\d]*(\d+(?:\.\d+)?)%",
+        guarantee_text,
+    )
     if monthly_guarantee_rate:
-        monthly_guarantee_fee = int(monthly_subtotal * monthly_guarantee_rate / 100 + 0.5)
-        monthly_guarantee_label = f"月額保証料（{monthly_guarantee_rate:g}%）"
+        monthly_fixed_extras = sum(
+            money_to_int(value)
+            for value in re.findall(r"(?:\+|＋)\s*[^+＋\d円]{0,16}?([\d,，]+)\s*円", guarantee_text)
+        )
+        monthly_guarantee_fee = int(monthly_subtotal * monthly_guarantee_rate / 100 + 0.5) + monthly_fixed_extras
+        monthly_guarantee_label = (
+            f"月額保証料（{monthly_guarantee_rate:g}%＋{monthly_fixed_extras:,}円）"
+            if monthly_fixed_extras
+            else f"月額保証料（{monthly_guarantee_rate:g}%）"
+        )
         monthly_guarantee_timing = "monthly"
     else:
+        monthly_fixed_extras = 0
         monthly_guarantee_fee, monthly_guarantee_label, monthly_guarantee_timing = pick_labeled_money(
             fee_rules["monthlyGuaranteeFee"],
-            guarantee_note or text,
+            guarantee_text,
         )
+        if not monthly_guarantee_fee:
+            monthly_guarantee_fee = money_to_int(pick(r"月額\s*[:：]?\s*([\d,，]+)円", guarantee_text))
+            monthly_guarantee_label = "月額保証料" if monthly_guarantee_fee else monthly_guarantee_label
+            monthly_guarantee_timing = "monthly" if monthly_guarantee_fee else monthly_guarantee_timing
     fixed_guarantee = money_to_int(
-        pick(r"(?:初回保証料|新規契約時\]事務手数料|事務手数料)\s*[:：]?\s*([\d,，]+)円", guarantee_note)
+        pick(r"(?:初回保証料|新規契約時\]事務手数料|保証会社事務手数料)\s*[:：]?\s*([\d,，]+)円", guarantee_text)
     )
-    initial_guarantee = fixed_guarantee or int(monthly_subtotal * 0.5 + 0.5)
-    initial_guarantee_label = "保証会社事務手数料" if fixed_guarantee and "事務手数料" in guarantee_note else "初回保証料"
+    initial_guarantee_rate = pick_percent(r"初回保証料[^\d]*(\d+(?:\.\d+)?)%", guarantee_text)
+    initial_guarantee = fixed_guarantee or int(monthly_subtotal * ((initial_guarantee_rate or 50) / 100) + 0.5)
+    initial_guarantee_label = "保証会社事務手数料" if fixed_guarantee and "事務手数料" in guarantee_text else "初回保証料"
 
     return {
         "property": {
@@ -337,6 +409,7 @@ def parse_property(text: str) -> dict:
             "keyMoney": key_money,
             "keyFee": key_fee,
             "cleaningFee": cleaning_fee,
+            "waterSanitizingFee": water_sanitizing_fee,
             "insuranceFee": insurance_fee,
             "townFee": town_fee,
             "supportFee": support_fee,
@@ -345,6 +418,7 @@ def parse_property(text: str) -> dict:
             "acCleaningFee": ac_cleaning_fee,
             "stoveMaintenanceFee": stove_fee,
             "deodorizingFee": deodorizing_fee,
+            "petFee": pet_fee,
             "waterDrainFee": water_drain_fee,
             "monthlyGuaranteeFee": monthly_guarantee_fee,
             "guaranteePersonal": initial_guarantee,
@@ -357,8 +431,10 @@ def parse_property(text: str) -> dict:
             "guaranteeMode": "fixed" if fixed_guarantee else "percent",
             "monthlyGuaranteeMode": "percent" if monthly_guarantee_rate else "fixed",
             "monthlyGuaranteeRate": monthly_guarantee_rate,
+            "monthlyGuaranteeFixedExtra": monthly_fixed_extras,
             "feeLabels": {
                 "cleaningFee": cleaning_label,
+                "waterSanitizingFee": water_sanitizing_label,
                 "keyFee": key_label,
                 "supportFee": support_label,
                 "townFee": town_label,
@@ -366,6 +442,7 @@ def parse_property(text: str) -> dict:
                 "acCleaningFee": ac_cleaning_label,
                 "stoveMaintenanceFee": stove_label,
                 "deodorizingFee": deodorizing_label,
+                "petFee": pet_label,
                 "waterDrainFee": water_drain_label,
                 "monthlyGuaranteeFee": monthly_guarantee_label,
                 "guaranteePersonal": initial_guarantee_label,
@@ -373,6 +450,7 @@ def parse_property(text: str) -> dict:
             },
             "feeTimings": {
                 "cleaningFee": cleaning_timing,
+                "waterSanitizingFee": water_sanitizing_timing,
                 "keyFee": key_timing,
                 "supportFee": support_timing,
                 "townFee": town_timing,
@@ -380,6 +458,7 @@ def parse_property(text: str) -> dict:
                 "acCleaningFee": ac_cleaning_timing,
                 "stoveMaintenanceFee": stove_timing,
                 "deodorizingFee": deodorizing_timing,
+                "petFee": pet_timing,
                 "waterDrainFee": water_drain_timing,
                 "monthlyGuaranteeFee": "monthly" if monthly_guarantee_fee else monthly_guarantee_timing,
                 "keyMoney": "initial",
@@ -407,6 +486,8 @@ class AppHandler(BaseHTTPRequestHandler):
         }.get(path.suffix, "application/octet-stream")
         self.send_response(200)
         self.send_header("Content-Type", content_type)
+        if path.suffix in {".html", ".css", ".js", ".json"}:
+            self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(path.read_bytes())
 
