@@ -264,6 +264,35 @@ def pick_labeled_money(labels: list[str], text: str) -> tuple[int, str, str]:
     return 0, labels[0], "initial"
 
 
+def pick_fixed_initial_guarantee(text: str) -> int:
+    patterns = [
+        r"(?:初回保証料|保証料|保証委託料|保証会社事務手数料)[^。・\n\r%]{0,40}?一律\s*[:：]?\s*([\d,，]+)\s*円",
+        r"一律\s*([\d,，]+)\s*円[^。・\n\r%]{0,40}?(?:初回保証料|保証料|保証委託料|保証会社)",
+        r"(?:初回保証料|保証会社事務手数料|保証委託料)[^。・\n\r%]{0,40}?([\d,，]+)\s*円",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, re.MULTILINE | re.DOTALL):
+            chunk = text[max(0, match.start() - 4) : match.end()]
+            if re.search(r"月額|月次|毎月|更新|年間", chunk) and not re.search(r"初回|新規契約時", chunk):
+                continue
+            amount = money_to_int(match.group(1))
+            if amount:
+                return amount
+    return 0
+
+
+def pick_initial_guarantee_rate(text: str) -> float:
+    patterns = [
+        r"(?:初回保証料|初回保証委託料|契約時保証料|初回保証会社保証料)[^%\d]{0,50}(\d+(?:\.\d+)?)%",
+        r"(?:月額賃料等|月額家賃等|賃料等|家賃等)[^%\d]{0,30}(\d+(?:\.\d+)?)%[^。・\n\r]{0,30}(?:初回|契約時)",
+    ]
+    for pattern in patterns:
+        amount = pick_percent(pattern, text)
+        if amount:
+            return amount
+    return 0
+
+
 def extract_guarantee_note(text: str) -> str:
     patterns = [
         r"保証会社：(.+?)(?:。)?・保険\s*：",
@@ -381,10 +410,8 @@ def parse_property(text: str) -> dict:
             monthly_guarantee_fee = money_to_int(pick(r"月額\s*[:：]?\s*([\d,，]+)円", guarantee_text))
             monthly_guarantee_label = "月額保証料" if monthly_guarantee_fee else monthly_guarantee_label
             monthly_guarantee_timing = "monthly" if monthly_guarantee_fee else monthly_guarantee_timing
-    fixed_guarantee = money_to_int(
-        pick(r"(?:初回保証料|新規契約時\]事務手数料|保証会社事務手数料)\s*[:：]?\s*([\d,，]+)円", guarantee_text)
-    )
-    initial_guarantee_rate = pick_percent(r"初回保証料[^\d]*(\d+(?:\.\d+)?)%", guarantee_text)
+    fixed_guarantee = pick_fixed_initial_guarantee(guarantee_text)
+    initial_guarantee_rate = pick_initial_guarantee_rate(guarantee_text)
     initial_guarantee = fixed_guarantee or int(monthly_subtotal * ((initial_guarantee_rate or 50) / 100) + 0.5)
     initial_guarantee_label = "保証会社事務手数料" if fixed_guarantee and "事務手数料" in guarantee_text else "初回保証料"
 
@@ -429,6 +456,7 @@ def parse_property(text: str) -> dict:
             "keyMoneyText": key_money_text,
             "guaranteeNote": guarantee_note,
             "guaranteeMode": "fixed" if fixed_guarantee else "percent",
+            "guaranteeRate": 0 if fixed_guarantee else initial_guarantee_rate or 50,
             "monthlyGuaranteeMode": "percent" if monthly_guarantee_rate else "fixed",
             "monthlyGuaranteeRate": monthly_guarantee_rate,
             "monthlyGuaranteeFixedExtra": monthly_fixed_extras,

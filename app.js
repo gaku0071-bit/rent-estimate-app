@@ -195,6 +195,34 @@ function amountNear(text, pattern) {
   return amounts.length ? moneyToInt(amounts.at(-1)) : 0;
 }
 
+function inferPaymentTiming(text, fallback = "initial") {
+  const value = String(text || "");
+  const hasInitial = value.includes("契約時");
+  const hasMoveout = value.includes("退去時");
+  if ((hasInitial && hasMoveout) || value.includes("退去時払い可")) return "choice";
+  if (value.includes("月額")) return "monthly";
+  if (hasMoveout) return "moveout";
+  return fallback;
+}
+
+function fixedGuaranteeAmount(text) {
+  const value = String(text || "");
+  const patterns = [
+    /(?:初回保証料|保証料|保証委託料|保証会社事務手数料)[^。・\n\r%]{0,40}?一律\s*[:：]?\s*[\d,，]+円/g,
+    /一律\s*[\d,，]+円[^。・\n\r%]{0,40}?(?:初回保証料|保証料|保証委託料|保証会社)/g,
+    /(?:初回保証料|保証会社事務手数料|保証委託料)[^。・\n\r%]{0,40}?[\d,，]+円/g,
+  ];
+  for (const pattern of patterns) {
+    for (const match of value.matchAll(pattern)) {
+      const chunk = value.slice(Math.max(0, match.index - 4), match.index + match[0].length);
+      if (/月額|月次|毎月|更新|年間/.test(chunk) && !/初回|新規契約時/.test(chunk)) continue;
+      const amount = moneyToInt(match[0]);
+      if (amount) return amount;
+    }
+  }
+  return 0;
+}
+
 function parkingAmount(value) {
   const text = String(value || "");
   if (!text || /無し|なし|満車|---|無料/.test(text)) return 0;
@@ -315,7 +343,7 @@ function applyCsvEnhancement(item) {
   if (keyFee) {
     setFeeAmount("keyFee", keyFee);
     setFeeLabel("keyFee", /カードキー/.test(notes) ? "カードキー設定料" : /シリンダー/.test(notes) ? "シリンダー交換料" : "カギ交換費用");
-    setFeeTiming("keyFee", "initial");
+    setFeeTiming("keyFee", inferPaymentTiming(notes));
     applied.push("鍵交換");
   }
 
@@ -323,7 +351,7 @@ function applyCsvEnhancement(item) {
   if (acCleaningFee) {
     setFeeAmount("acCleaningFee", acCleaningFee);
     setFeeLabel("acCleaningFee", /分解整備/.test(notes) ? "エアコン分解整備料" : /分解清掃/.test(notes) ? "エアコン分解清掃料" : "エアコン清掃料");
-    setFeeTiming("acCleaningFee", /退去時/.test(notes) ? "moveout" : "initial");
+    setFeeTiming("acCleaningFee", inferPaymentTiming(notes));
     applied.push("エアコン清掃");
   }
 
@@ -331,7 +359,7 @@ function applyCsvEnhancement(item) {
   if (stoveFee) {
     setFeeAmount("stoveMaintenanceFee", stoveFee);
     setFeeLabel("stoveMaintenanceFee", /FF/.test(notes) ? "FF分解清掃料" : "暖房分解清掃料");
-    setFeeTiming("stoveMaintenanceFee", /退去時/.test(notes) ? "moveout" : "initial");
+    setFeeTiming("stoveMaintenanceFee", inferPaymentTiming(notes));
     applied.push("暖房・ストーブ整備");
   }
 
@@ -339,7 +367,7 @@ function applyCsvEnhancement(item) {
   if (deodorizingFee) {
     setFeeAmount("deodorizingFee", deodorizingFee);
     setFeeLabel("deodorizingFee", /ペット/.test(notes) ? "ペット消臭料" : "消臭料");
-    setFeeTiming("deodorizingFee", /契約時/.test(notes) && !/退去時/.test(notes) ? "initial" : "moveout");
+    setFeeTiming("deodorizingFee", inferPaymentTiming(notes, "moveout"));
     applied.push("消臭料");
   }
 
@@ -350,7 +378,7 @@ function applyCsvEnhancement(item) {
       "petFee",
       /ペット飼育時礼金|ペット礼金/.test(notes) ? "ペット礼金" : /清掃/.test(notes) ? "ペット清掃料" : /消毒/.test(notes) ? "ペット消毒料" : "ペット関連費用",
     );
-    setFeeTiming("petFee", /退去時/.test(notes) ? "moveout" : "initial");
+    setFeeTiming("petFee", inferPaymentTiming(notes));
     applied.push("ペット関連費用");
   }
 
@@ -358,7 +386,7 @@ function applyCsvEnhancement(item) {
   if (waterDrainFee) {
     setFeeAmount("waterDrainFee", waterDrainFee);
     setFeeLabel("waterDrainFee", /エコジョーズ/.test(notes) ? "エコジョーズ水落費用" : "水落費用");
-    setFeeTiming("waterDrainFee", /契約時/.test(notes) && !/退去時/.test(notes) ? "initial" : "moveout");
+    setFeeTiming("waterDrainFee", inferPaymentTiming(notes, "moveout"));
     applied.push("水落費用");
   }
 
@@ -366,7 +394,7 @@ function applyCsvEnhancement(item) {
   if (cleaningFee) {
     setFeeAmount("cleaningFee", cleaningFee);
     setFeeLabel("cleaningFee", /クリーニング/.test(notes) ? "ハウスクリーニング" : "清掃料");
-    setFeeTiming("cleaningFee", /退去時/.test(notes) ? "moveout" : "initial");
+    setFeeTiming("cleaningFee", inferPaymentTiming(notes));
     applied.push("清掃料");
   }
 
@@ -374,7 +402,7 @@ function applyCsvEnhancement(item) {
   if (waterSanitizingFee) {
     setFeeAmount("waterSanitizingFee", waterSanitizingFee);
     setFeeLabel("waterSanitizingFee", "水廻り消毒料");
-    setFeeTiming("waterSanitizingFee", /退去時/.test(notes) ? "moveout" : "initial");
+    setFeeTiming("waterSanitizingFee", inferPaymentTiming(notes));
     applied.push("水廻り消毒料");
   }
 
@@ -394,9 +422,10 @@ function applyCsvEnhancement(item) {
     applied.push("水道料");
   }
 
-  const fixedGuarantee = amountNear(notes, /初回保証料[^。・\n\r]*?[\d,，]+円/);
+  const fixedGuarantee = fixedGuaranteeAmount(notes);
   if (fixedGuarantee) {
     state.settings.guaranteeMode = "fixed";
+    state.settings.guaranteeRate = 0;
     setFeeAmount("guaranteePersonal", fixedGuarantee);
     setFeeLabel("guaranteePersonal", "初回保証料");
     applied.push("初回保証料");
@@ -404,6 +433,7 @@ function applyCsvEnhancement(item) {
     const initialRate = Number(notes.match(/初回保証料[^%\d]*(\d+(?:\.\d+)?)%/)?.[1] || 0);
     if (initialRate) {
       state.settings.guaranteeMode = "percent";
+      state.settings.guaranteeRate = initialRate;
       el("guaranteeRate").value = initialRate;
       applied.push(`初回保証料${initialRate}%`);
     }
@@ -489,7 +519,7 @@ function resetToBlank() {
   });
   el("prorateDays").value = 0;
   el("monthDays").value = 30;
-  el("guaranteeRate").value = 50;
+  el("guaranteeRate").value = Number(settings.guaranteeRate || 50);
   el("includeParking").checked = false;
   el("includeAcCleaning").checked = false;
   el("includePetFee").checked = false;
@@ -594,7 +624,7 @@ function timingChoiceFees() {
 }
 
 function guaranteeCandidate(fee) {
-  return ["monthly", "optionalParking"].includes(fee.type);
+  return fee.id !== "monthlyGuaranteeFee" && ["monthly", "optionalParking"].includes(fee.type);
 }
 
 function guaranteeBaseRows() {
@@ -844,9 +874,7 @@ function estimateRows() {
 }
 
 function total() {
-  return estimateRows()
-    .filter((fee) => fee.timing !== "choice")
-    .reduce((sum, fee) => sum + Number(fee.amount || 0), 0);
+  return estimateRows().reduce((sum, fee) => sum + Number(fee.amount || 0), 0);
 }
 
 function monthlySummaryRows() {
@@ -940,7 +968,7 @@ function renderEstimate() {
   const notes = [
     rentRuleNote,
     freeRange ? "フリーレント期間に重なる賃料と共益費・管理費を控除しています。" : "",
-    choiceFees.length ? `支払時期の選択が必要な項目があります（${escapeHtml(choiceFees.map((fee) => fee.label).join("、"))}）。要選択の項目は合計から除外しています。` : "",
+    choiceFees.length ? `支払時期の選択が必要な項目があります（${escapeHtml(choiceFees.map((fee) => fee.label).join("、"))}）。要選択の項目は契約時候補として合計に含めています。退去時払いにする場合は、費用項目欄で支払時期を退去時に変更してください。` : "",
     el("includeFreeRentNote").checked && freeRent ? `<strong>${escapeHtml(freeRent)}</strong>` : "",
     "本見積はPDF記載内容をもとにした概算です。申込条件、入居日、管理会社確認により金額が変動する場合があります。",
     guaranteeNote ? `保証会社条件: ${escapeHtml(guaranteeNote)}` : "",
