@@ -62,6 +62,7 @@ const feeDefinitions = [
   ["室内清掃費用", "cleaningFee", "initial", false, "initial"],
   ["水廻り消毒料", "waterSanitizingFee", "initial", false, "initial"],
   ["カギ交換費用", "keyFee", "initial", false, "initial"],
+  ["抗菌施工料", "antibacterialFee", "initial", false, "initial"],
   ["24時間管理料", "supportFee", "monthly", true, "monthly"],
   ["月額保証料", "monthlyGuaranteeFee", "monthly", false, "monthly"],
   ["町内会費", "townFee", "monthly", true, "monthly"],
@@ -345,6 +346,14 @@ function applyCsvEnhancement(item) {
     setFeeLabel("keyFee", /カードキー/.test(notes) ? "カードキー設定料" : /シリンダー/.test(notes) ? "シリンダー交換料" : "カギ交換費用");
     setFeeTiming("keyFee", inferPaymentTiming(notes));
     applied.push("鍵交換");
+  }
+
+  const antibacterialFee = amountNear(notes, /(?:抗菌施工料|抗菌施工費|抗菌処理料|抗菌処理費|抗菌消臭料|抗菌消臭費|室内抗菌料|室内抗菌費|除菌施工料|除菌施工費|除菌消臭料|除菌消臭費|室内消毒料|室内消毒費)[^。・\n\r]*?[\d,，]+円/);
+  if (antibacterialFee) {
+    setFeeAmount("antibacterialFee", antibacterialFee);
+    setFeeLabel("antibacterialFee", /除菌/.test(notes) ? "除菌施工料" : /消毒/.test(notes) ? "室内消毒料" : "抗菌施工料");
+    setFeeTiming("antibacterialFee", inferPaymentTiming(notes));
+    applied.push("抗菌施工料");
   }
 
   const acCleaningFee = amountNear(notes, /(?:エアコン洗浄料|エアコン清掃料|エアコン清掃|エアコン整備料|エアコン分解清掃料|エアコン分解整備料|エアコンクリーニング|エアコンクリーニング代)[^。・\n\r]*?[\d,，]+円/);
@@ -848,6 +857,7 @@ function estimateRowOrder(row) {
     petFee: 55,
     waterDrainFee: 56,
     keyFee: 60,
+    antibacterialFee: 61,
     insuranceFee: 70,
     guaranteePersonal: 80,
     brokerageFee: 90,
