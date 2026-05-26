@@ -60,6 +60,22 @@ DEFAULT_FEE_RULES = {
         "鍵交換代",
         "カギ交換費",
     ],
+    "antibacterialFee": [
+        "抗菌施工料",
+        "抗菌施工費",
+        "抗菌処理料",
+        "抗菌処理費",
+        "抗菌消臭料",
+        "抗菌消臭費",
+        "室内抗菌料",
+        "室内抗菌費",
+        "除菌施工料",
+        "除菌施工費",
+        "除菌消臭料",
+        "除菌消臭費",
+        "室内消毒料",
+        "室内消毒費",
+    ],
     "supportFee": [
         "24時間管理料",
         "24時間管理費",
@@ -242,7 +258,7 @@ def pick_labeled_money(labels: list[str], text: str) -> tuple[int, str, str]:
                     item_text += "・" + (following[:following_end] if following_end != -1 else following)
             if re.search(rf"{re.escape(label)}\s*[:：]?\s*なし", item_text):
                 return 0, label, "monthly" if "会費" in label else "initial"
-            amount_match = re.search(r"([\d,，]+)円", item_text)
+            amount_match = re.search(r"([\d,，]+)\s*円", item_text)
             amount = money_to_int(amount_match.group(1)) if amount_match else 0
             if amount:
                 timing_text = item_text
@@ -326,6 +342,11 @@ def pick_percent(pattern: str, text: str) -> float:
     return float(value) if value else 0.0
 
 
+def last_money_amount(text: str) -> int:
+    matches = re.findall(r"([\d,，]+)\s*円", text)
+    return money_to_int(matches[-1]) if matches else 0
+
+
 def extract_pdf_text(pdf_path: Path) -> str:
     pypdf = _load_pypdf()
     reader = pypdf.PdfReader(str(pdf_path))
@@ -362,8 +383,9 @@ def parse_property(text: str) -> dict:
         text,
     )
     key_fee, key_label, key_timing = pick_labeled_money(fee_rules["keyFee"], text)
+    antibacterial_fee, antibacterial_label, antibacterial_timing = pick_labeled_money(fee_rules["antibacterialFee"], text)
     insurance_text = pick(r"保険：(.+?)・\s*(?:町内会費|ハウスクリーニング|室内清掃費用|退去時室内清掃料|カギ交換費用|鍵交換料|カードキー設定交換料)", text)
-    insurance_fee = money_to_int(pick(r"([\d,，]+)円", insurance_text))
+    insurance_fee = last_money_amount(insurance_text)
     support_fee, support_label, support_timing = pick_labeled_money(fee_rules["supportFee"], text)
     if support_fee and support_timing == "initial":
         support_timing = "monthly"
@@ -385,7 +407,7 @@ def parse_property(text: str) -> dict:
     monthly_subtotal = rent + common_fee + town_fee + support_fee + gas_lease_fee
     guarantee_text = f"{guarantee_note}\n{text}" if guarantee_note else text
     monthly_guarantee_rate = pick_percent(
-        r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|支払手数料)[^\d]*(\d+(?:\.\d+)?)%",
+        r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|支払手数料|月々)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
         guarantee_text,
     )
     if monthly_guarantee_rate:
@@ -435,6 +457,7 @@ def parse_property(text: str) -> dict:
             "deposit": deposit,
             "keyMoney": key_money,
             "keyFee": key_fee,
+            "antibacterialFee": antibacterial_fee,
             "cleaningFee": cleaning_fee,
             "waterSanitizingFee": water_sanitizing_fee,
             "insuranceFee": insurance_fee,
@@ -464,6 +487,7 @@ def parse_property(text: str) -> dict:
                 "cleaningFee": cleaning_label,
                 "waterSanitizingFee": water_sanitizing_label,
                 "keyFee": key_label,
+                "antibacterialFee": antibacterial_label,
                 "supportFee": support_label,
                 "townFee": town_label,
                 "gasLeaseFee": gas_lease_label,
@@ -480,6 +504,7 @@ def parse_property(text: str) -> dict:
                 "cleaningFee": cleaning_timing,
                 "waterSanitizingFee": water_sanitizing_timing,
                 "keyFee": key_timing,
+                "antibacterialFee": antibacterial_timing,
                 "supportFee": support_timing,
                 "townFee": town_timing,
                 "gasLeaseFee": gas_lease_timing,
