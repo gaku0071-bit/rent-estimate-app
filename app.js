@@ -519,7 +519,7 @@ function resetToBlank() {
   });
   el("prorateDays").value = 0;
   el("monthDays").value = 30;
-  el("guaranteeRate").value = Number(settings.guaranteeRate || 50);
+  el("guaranteeRate").value = 50;
   el("includeParking").checked = false;
   el("includeAcCleaning").checked = false;
   el("includePetFee").checked = false;
@@ -1204,7 +1204,7 @@ el("applyCsvButton").addEventListener("click", () => {
 
 el("printButton").addEventListener("click", () => window.print());
 
-loadData(sampleData);
+resetToBlank();
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("service-worker.js").catch(() => {});
