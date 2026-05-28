@@ -26,6 +26,13 @@ DEFAULT_FEE_RULES = {
         "清掃料",
         "ハウスクリーニング",
         "ハウスクリーニング料",
+        "ルームクリーニング費用",
+        "ルームクリーニング料",
+        "ルームクリーニング費",
+        "ルームクリーニング",
+        "るーむくりーにんぐ費用",
+        "るーむくりーにんぐ料",
+        "るーむくりーにんぐ費",
         "家電清掃料",
     ],
     "waterSanitizingFee": [
@@ -347,6 +354,84 @@ def last_money_amount(text: str) -> int:
     return money_to_int(matches[-1]) if matches else 0
 
 
+def infer_fee_timing(text: str, label: str = "") -> str:
+    has_initial = "契約時" in text
+    has_moveout = "退去時" in text
+    if (has_initial and has_moveout) or "退去時払い可" in text:
+        return "choice"
+    if "月額" in text or "/月額" in text:
+        return "monthly"
+    if has_moveout or "退去時" in label:
+        return "moveout"
+    return "initial"
+
+
+def generic_fee_type(timing: str) -> str:
+    return "monthly" if timing == "monthly" else "initial"
+
+
+def non_customer_fee_label(label: str) -> bool:
+    return bool(
+        re.search(
+            r"契約事務手数料|契約時事務手数料|事務手数料|契約手数料|書類作成|更新料|キャンセル|広告料|AD|仲介手数料|保証会社|保証料|保険",
+            label,
+            re.IGNORECASE,
+        )
+    )
+
+
+def extract_unregistered_fees(text: str, fee_rules: dict[str, list[str]]) -> list[dict]:
+    known_labels = {label for labels in fee_rules.values() for label in labels}
+    known_labels.update(
+        {
+            "賃料",
+            "共益費",
+            "共益費・管理費",
+            "敷金",
+            "礼金",
+            "町内会費",
+            "町会費",
+            "保険",
+            "初回保証料",
+            "月額保証料",
+        }
+    )
+    search_text = text.replace("\n", "")
+    extras: list[dict] = []
+    seen: set[tuple[str, int, str]] = set()
+    pattern = re.compile(r"(?:^|・|○\s*)([^・：:\n]{2,36}?)[：:]\s*([^・]{0,48}?)([\d,，]+)\s*円([^・]{0,48})")
+
+    for match in pattern.finditer(search_text):
+        label = re.sub(r"\s+", "", match.group(1)).strip("・:：、。")
+        context = "".join(match.groups())
+        amount = money_to_int(match.group(3))
+        if not label or not amount:
+            continue
+        if non_customer_fee_label(label):
+            continue
+        if any(known in label or label in known for known in known_labels):
+            continue
+        if re.search(r"無し|なし|不要", context):
+            continue
+        timing = infer_fee_timing(context, label)
+        key = (label, amount, timing)
+        if key in seen:
+            continue
+        seen.add(key)
+        extras.append(
+            {
+                "id": f"extra-{len(extras) + 1}",
+                "label": label,
+                "amount": amount,
+                "timing": timing,
+                "type": generic_fee_type(timing),
+                "guaranteeTarget": False,
+                "noProrate": timing == "monthly",
+            }
+        )
+    return extras
+
+
 def extract_pdf_text(pdf_path: Path) -> str:
     pypdf = _load_pypdf()
     reader = pypdf.PdfReader(str(pdf_path))
@@ -406,9 +491,10 @@ def parse_property(text: str) -> dict:
     guarantee_note = extract_guarantee_note(text)
     monthly_subtotal = rent + common_fee + town_fee + support_fee + gas_lease_fee
     guarantee_text = f"{guarantee_note}\n{text}" if guarantee_note else text
+    guarantee_text_for_rates = re.sub(r"(?<=[\d.])\s+(?=\d)", "", guarantee_text)
     monthly_guarantee_rate = pick_percent(
         r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|支払手数料|月々)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
-        guarantee_text,
+        guarantee_text_for_rates,
     )
     if monthly_guarantee_rate:
         monthly_fixed_extras = sum(
@@ -432,10 +518,11 @@ def parse_property(text: str) -> dict:
             monthly_guarantee_fee = money_to_int(pick(r"月額\s*[:：]?\s*([\d,，]+)円", guarantee_text))
             monthly_guarantee_label = "月額保証料" if monthly_guarantee_fee else monthly_guarantee_label
             monthly_guarantee_timing = "monthly" if monthly_guarantee_fee else monthly_guarantee_timing
-    fixed_guarantee = pick_fixed_initial_guarantee(guarantee_text)
-    initial_guarantee_rate = pick_initial_guarantee_rate(guarantee_text)
+    fixed_guarantee = pick_fixed_initial_guarantee(guarantee_text_for_rates)
+    initial_guarantee_rate = pick_initial_guarantee_rate(guarantee_text_for_rates)
     initial_guarantee = fixed_guarantee or int(monthly_subtotal * ((initial_guarantee_rate or 50) / 100) + 0.5)
     initial_guarantee_label = "保証会社事務手数料" if fixed_guarantee and "事務手数料" in guarantee_text else "初回保証料"
+    extra_fees = extract_unregistered_fees(text, fee_rules)
 
     return {
         "property": {
@@ -519,6 +606,7 @@ def parse_property(text: str) -> dict:
             "includeParking": False,
             "includeAcCleaning": True,
             "issueDate": pick(r"出力日:([0-9/]+)", text),
+            "extraFees": extra_fees,
         },
         "rawText": text,
     }

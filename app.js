@@ -224,6 +224,77 @@ function fixedGuaranteeAmount(text) {
   return 0;
 }
 
+function nonCustomerFeeLabel(label) {
+  return /契約事務手数料|契約時事務手数料|事務手数料|契約手数料|書類作成|更新料|キャンセル|広告料|AD|仲介手数料|保証会社|保証料|保険/.test(label);
+}
+
+function genericFeeType(timing) {
+  return timing === "monthly" ? "monthly" : "initial";
+}
+
+function feeLabelExists(label) {
+  return state.fees.some((fee) => normalizeMatchText(fee.label) === normalizeMatchText(label));
+}
+
+function addExtraFee(fee) {
+  if (!fee?.label || !Number(fee.amount || 0) || feeLabelExists(fee.label) || nonCustomerFeeLabel(fee.label)) return false;
+  state.fees.push({
+    id: fee.id || `extra-${Date.now()}-${state.fees.length}`,
+    label: fee.label,
+    amount: Number(fee.amount || 0),
+    type: fee.type || genericFeeType(fee.timing),
+    timing: fee.timing || "initial",
+    guaranteeTarget: Boolean(fee.guaranteeTarget),
+    noProrate: Boolean(fee.noProrate),
+    derived: false,
+  });
+  return true;
+}
+
+function extractUnregisteredFeesFromText(text) {
+  const value = String(text || "").replace(/\n/g, "");
+  const knownWords = [
+    "賃料",
+    "共益費",
+    "管理費",
+    "敷金",
+    "礼金",
+    "町内会費",
+    "町会費",
+    "保険",
+    "初回保証料",
+    "月額保証料",
+    "カギ",
+    "鍵",
+    "カードキー",
+    "シリンダ",
+    "清掃",
+    "クリーニング",
+    "抗菌",
+    "除菌",
+    "消毒",
+    "サポート",
+    "水道",
+  ];
+  const extras = [];
+  const seen = new Set();
+  const pattern = /(?:^|・|○\s*)([^・：:\n]{2,36}?)[：:]\s*([^・]{0,48}?)([\d,，]+)\s*円([^・]{0,48})/g;
+  for (const match of value.matchAll(pattern)) {
+    const label = match[1].replace(/\s+/g, "").replace(/[・:：、。]+$/g, "");
+    const context = match.slice(1).join("");
+    const amount = moneyToInt(match[3]);
+    if (!label || !amount || /無し|なし|不要/.test(context)) continue;
+    if (nonCustomerFeeLabel(label)) continue;
+    if (knownWords.some((word) => label.includes(word) || word.includes(label))) continue;
+    const timing = inferPaymentTiming(context);
+    const key = `${label}-${amount}-${timing}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    extras.push({ label, amount, timing, type: genericFeeType(timing), noProrate: timing === "monthly" });
+  }
+  return extras;
+}
+
 function parkingAmount(value) {
   const text = String(value || "");
   if (!text || /無し|なし|満車|---|無料/.test(text)) return 0;
@@ -399,10 +470,10 @@ function applyCsvEnhancement(item) {
     applied.push("水落費用");
   }
 
-  const cleaningFee = amountNear(notes, /(?:室内清掃料|室内清掃費|退去時室内清掃料|退去時清掃料|退去時清掃費|ハウスクリーニング料?|家電清掃料|清掃料)[^。・\n\r]*?[\d,，]+円/);
+  const cleaningFee = amountNear(notes, /(?:室内清掃料|室内清掃費|退去時室内清掃料|退去時清掃料|退去時清掃費|ハウスクリーニング料?|ルームクリーニング費用|ルームクリーニング料|ルームクリーニング費|ルームクリーニング|るーむくりーにんぐ費用|るーむくりーにんぐ料|るーむくりーにんぐ費|家電清掃料|清掃料)[^。・\n\r]*?[\d,，]+円/);
   if (cleaningFee) {
     setFeeAmount("cleaningFee", cleaningFee);
-    setFeeLabel("cleaningFee", /クリーニング/.test(notes) ? "ハウスクリーニング" : "清掃料");
+    setFeeLabel("cleaningFee", /ルームクリーニング|るーむくりーにんぐ/.test(notes) ? "ルームクリーニング費用" : /クリーニング/.test(notes) ? "ハウスクリーニング" : "清掃料");
     setFeeTiming("cleaningFee", inferPaymentTiming(notes));
     applied.push("清掃料");
   }
@@ -432,6 +503,7 @@ function applyCsvEnhancement(item) {
   }
 
   const fixedGuarantee = fixedGuaranteeAmount(notes);
+  const compactNotes = notes.replace(/(?<=[\d.])\s+(?=\d)/g, "");
   if (fixedGuarantee) {
     state.settings.guaranteeMode = "fixed";
     state.settings.guaranteeRate = 0;
@@ -439,7 +511,7 @@ function applyCsvEnhancement(item) {
     setFeeLabel("guaranteePersonal", "初回保証料");
     applied.push("初回保証料");
   } else {
-    const initialRate = Number(notes.match(/初回保証料[^%\d]*(\d+(?:\.\d+)?)%/)?.[1] || 0);
+    const initialRate = Number(compactNotes.match(/初回保証料[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] || 0);
     if (initialRate) {
       state.settings.guaranteeMode = "percent";
       state.settings.guaranteeRate = initialRate;
@@ -448,7 +520,7 @@ function applyCsvEnhancement(item) {
     }
   }
 
-  const monthlyRate = Number(notes.match(/(?:月額手数料|月額保証料|月次保証料|支払手数料)[^%\d]*(\d+(?:\.\d+)?)%/)?.[1] || 0);
+  const monthlyRate = Number(compactNotes.match(/(?:月額手数料|月額保証料|月次保証料|支払手数料|月々)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] || 0);
   const monthlyFixed =
     amountNear(notes, /(?:月額手数料|月額保証料|月次保証料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料)[^。・\n\r]*?[\d,，]+円/) ||
     amountNear(notes, /月額\s*[:：]?\s*[\d,，]+円/);
@@ -473,6 +545,10 @@ function applyCsvEnhancement(item) {
     setFeeAmount("monthlyGuaranteeFee", 0);
     applied.push("月額保証料なし");
   }
+
+  extractUnregisteredFeesFromText(notes).forEach((fee) => {
+    if (addExtraFee(fee)) applied.push(fee.label);
+  });
 
   syncDerivedFees();
   renderGuaranteeTargets();
@@ -583,6 +659,7 @@ function loadData(data) {
     guaranteeTarget,
     derived: ["guaranteePersonal", "brokerageFee"].includes(key) || (key === "monthlyGuaranteeFee" && settings.monthlyGuaranteeMode === "percent"),
   }));
+  (settings.extraFees || []).forEach((fee) => addExtraFee(fee));
   syncDerivedFees();
   renderGuaranteeTargets();
   renderFeeEditor();
@@ -743,7 +820,7 @@ function shouldIncludeNextMonthRent() {
 }
 
 function skipProration(fee) {
-  return ["supportFee", "townFee", "gasLeaseFee"].includes(fee.id);
+  return Boolean(fee.noProrate) || ["supportFee", "townFee", "gasLeaseFee"].includes(fee.id);
 }
 
 function estimateMonthlyChargeFee(fee) {
