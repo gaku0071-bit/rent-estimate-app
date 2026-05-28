@@ -175,7 +175,22 @@ input {
   background: #fff;
 }
 
+select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: var(--ink);
+  background: #fff;
+}
+
 input:focus {
+  border-color: var(--accent);
+  outline: 3px solid color-mix(in srgb, var(--focus), transparent 55%);
+}
+
+select:focus {
   border-color: var(--accent);
   outline: 3px solid color-mix(in srgb, var(--focus), transparent 55%);
 }
@@ -208,6 +223,23 @@ input:focus {
 
 .rate-field input {
   min-height: 34px;
+}
+
+.csv-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.65fr) minmax(320px, 1fr);
+  gap: 12px;
+}
+
+.csv-preview {
+  margin-top: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--soft);
+  padding: 10px 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .target-list {
@@ -289,7 +321,7 @@ input:focus {
 
 .fee-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1.2fr) 88px 84px 94px 34px;
+  grid-template-columns: minmax(120px, 1.2fr) 88px 94px 84px 34px;
   gap: 8px;
   align-items: end;
 }
@@ -516,6 +548,10 @@ th.amount {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .csv-controls {
     grid-template-columns: 1fr;
   }
 

@@ -995,11 +995,11 @@ function renderFeeEditor() {
     row.innerHTML = `
       <input aria-label="項目名" value="${escapeHtml(fee.label)}" data-field="label" data-index="${index}">
       <input aria-label="金額" type="number" value="${fee.amount}" data-field="amount" data-index="${index}" ${fee.derived ? "readonly" : ""}>
-      <select aria-label="支払時期" data-field="timing" data-index="${index}">
-        ${timingOptions().map((timing) => `<option value="${timing}" ${fee.timing === timing ? "selected" : ""}>${timingLabel(timing)}</option>`).join("")}
-      </select>
       <select aria-label="区分" data-field="type" data-index="${index}">
         ${["initial", "monthly", "personal", "corporate", "optionalParking", "optionalAc", "optionalPet"].map((type) => `<option value="${type}" ${fee.type === type ? "selected" : ""}>${feeKindLabel(type)}</option>`).join("")}
+      </select>
+      <select aria-label="支払時期" data-field="timing" data-index="${index}">
+        ${timingOptions().map((timing) => `<option value="${timing}" ${fee.timing === timing ? "selected" : ""}>${timingLabel(timing)}</option>`).join("")}
       </select>
       <button type="button" aria-label="削除" data-remove="${index}">×</button>
     `;
