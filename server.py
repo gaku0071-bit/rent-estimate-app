@@ -21,6 +21,8 @@ DEFAULT_FEE_RULES = {
         "退去時室内清掃料",
         "退去時清掃費",
         "退去時清掃料",
+        "退去清掃費",
+        "退去清掃料",
         "室内清掃料",
         "室内清掃費",
         "清掃料",
@@ -270,10 +272,14 @@ def pick_labeled_money(labels: list[str], text: str) -> tuple[int, str, str]:
             amount = money_to_int(amount_match.group(1)) if amount_match else 0
             if amount:
                 timing_text = item_text
-                has_initial = "契約時" in timing_text
+                has_initial = "契約時" in timing_text or "入居時" in timing_text
                 has_moveout = "退去時" in timing_text
                 has_monthly = "月額" in timing_text
-                is_choice = (has_initial and has_moveout) or "退去時払い可" in timing_text
+                is_choice = (
+                    (has_initial and has_moveout)
+                    or "退去時払い可" in timing_text
+                    or re.search(r"(?:契約時|入居時)(?:または|もしくは|又は)退去時|退去時(?:または|もしくは|又は)(?:契約時|入居時)", timing_text)
+                )
                 timing = (
                     "choice"
                     if is_choice
@@ -377,9 +383,13 @@ def pick_insurance_fee(text: str) -> int:
 
 
 def infer_fee_timing(text: str, label: str = "") -> str:
-    has_initial = "契約時" in text
+    has_initial = "契約時" in text or "入居時" in text
     has_moveout = "退去時" in text
-    if (has_initial and has_moveout) or "退去時払い可" in text:
+    if (
+        (has_initial and has_moveout)
+        or "退去時払い可" in text
+        or re.search(r"(?:契約時|入居時)(?:または|もしくは|又は)退去時|退去時(?:または|もしくは|又は)(?:契約時|入居時)", text)
+    ):
         return "choice"
     if "月額" in text or "/月額" in text:
         return "monthly"
@@ -626,6 +636,7 @@ def parse_property(text: str) -> dict:
             },
             "includeParking": False,
             "includeAcCleaning": True,
+            "includeCorporateGuarantee": False,
             "issueDate": pick(r"出力日:([0-9/]+)", text),
             "extraFees": extra_fees,
         },
