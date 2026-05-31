@@ -354,6 +354,20 @@ def last_money_amount(text: str) -> int:
     return money_to_int(matches[-1]) if matches else 0
 
 
+def pick_insurance_fee(text: str) -> int:
+    compact_text = re.sub(r"(?<=\d)\s+(?=\d)", "", text)
+    patterns = [
+        r"(?:家財保険|火災保険|保険)\s*[:：]\s*[^・\n\r]{0,120}?([\d,，]+)\s*円",
+        r"(?:家財保険|火災保険|保険)[^・\n\r]{0,80}?要加入[^・\n\r]{0,80}?([\d,，]+)\s*円",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, compact_text, re.MULTILINE | re.DOTALL):
+            amount = money_to_int(match.group(1))
+            if 10000 <= amount <= 50000:
+                return amount
+    return 0
+
+
 def infer_fee_timing(text: str, label: str = "") -> str:
     has_initial = "契約時" in text
     has_moveout = "退去時" in text
@@ -469,8 +483,7 @@ def parse_property(text: str) -> dict:
     )
     key_fee, key_label, key_timing = pick_labeled_money(fee_rules["keyFee"], text)
     antibacterial_fee, antibacterial_label, antibacterial_timing = pick_labeled_money(fee_rules["antibacterialFee"], text)
-    insurance_text = pick(r"保険：(.+?)・\s*(?:町内会費|ハウスクリーニング|室内清掃費用|退去時室内清掃料|カギ交換費用|鍵交換料|カードキー設定交換料)", text)
-    insurance_fee = last_money_amount(insurance_text)
+    insurance_fee = pick_insurance_fee(text)
     support_fee, support_label, support_timing = pick_labeled_money(fee_rules["supportFee"], text)
     if support_fee and support_timing == "initial":
         support_timing = "monthly"
