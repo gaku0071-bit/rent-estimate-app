@@ -86,6 +86,7 @@ DEFAULT_FEE_RULES = {
     "supportFee": [
         "24時間管理料",
         "24時間管理費",
+        "24時間管理",
         "24時間サポート料",
         "24時間サポート費",
         "シャーメゾンSUPPORT24",
@@ -349,6 +350,13 @@ def pick_percent(pattern: str, text: str) -> float:
     return float(value) if value else 0.0
 
 
+def normalize_rate_text(text: str) -> str:
+    value = str(text).translate(str.maketrans("０１２３４５６７８９．，％", "0123456789.,%"))
+    value = re.sub(r"(?<=\d)\s+(?=\d)", "", value)
+    value = re.sub(r"(?<=\d),(?=\d{1,2}\s*(?:%|パーセント))", ".", value)
+    return value
+
+
 def last_money_amount(text: str) -> int:
     matches = re.findall(r"([\d,，]+)\s*円", text)
     return money_to_int(matches[-1]) if matches else 0
@@ -504,9 +512,9 @@ def parse_property(text: str) -> dict:
     guarantee_note = extract_guarantee_note(text)
     monthly_subtotal = rent + common_fee + town_fee + support_fee + gas_lease_fee
     guarantee_text = f"{guarantee_note}\n{text}" if guarantee_note else text
-    guarantee_text_for_rates = re.sub(r"(?<=[\d.])\s+(?=\d)", "", guarantee_text)
+    guarantee_text_for_rates = normalize_rate_text(guarantee_text)
     monthly_guarantee_rate = pick_percent(
-        r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|支払手数料|月々)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
+        r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|支払手数料|月々|月額)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
         guarantee_text_for_rates,
     )
     if monthly_guarantee_rate:

@@ -203,6 +203,13 @@ function amountNear(text, pattern) {
   return amounts.length ? moneyToInt(amounts.at(-1)) : 0;
 }
 
+function normalizeRateText(text) {
+  return String(text || "")
+    .replace(/[０-９．，％]/g, (char) => "０１２３４５６７８９．，％".indexOf(char) >= 0 ? "0123456789.,%"["０１２３４５６７８９．，％".indexOf(char)] : char)
+    .replace(/(?<=\d)\s+(?=\d)/g, "")
+    .replace(/(?<=\d),(?=\d{1,2}\s*(?:%|パーセント))/g, ".");
+}
+
 function inferPaymentTiming(text, fallback = "initial") {
   const value = String(text || "");
   const hasInitial = value.includes("契約時");
@@ -493,7 +500,7 @@ function applyCsvEnhancement(item) {
     applied.push("水廻り消毒料");
   }
 
-  const supportFee = amountNear(notes, /(?:24時間管理料|24時間管理費|24時間サポート料|24時間サポート費|シャーメゾンSUPPORT24|ギムサポートクラブ|リペアサービス|夜間サポート|24時間サポート|安心サポート|緊急サポート|新生活サポート|暮らしサポート|ライフサポート|管理サポート)[^。・\n\r]*?[\d,，]+円/);
+  const supportFee = amountNear(notes, /(?:24時間管理料|24時間管理費|24時間管理|24時間サポート料|24時間サポート費|シャーメゾンSUPPORT24|ギムサポートクラブ|リペアサービス|夜間サポート|24時間サポート|安心サポート|緊急サポート|新生活サポート|暮らしサポート|ライフサポート|管理サポート)[^。・\n\r]*?[\d,，]+円/);
   if (supportFee) {
     setFeeAmount("supportFee", supportFee);
     setFeeLabel("supportFee", /シャーメゾン/.test(notes) ? "シャーメゾンSUPPORT24" : /ギム/.test(notes) ? "ギムサポートクラブ" : /リペア/.test(notes) ? "リペアサービス" : "24時間サポート");
@@ -510,7 +517,7 @@ function applyCsvEnhancement(item) {
   }
 
   const fixedGuarantee = fixedGuaranteeAmount(notes);
-  const compactNotes = notes.replace(/(?<=[\d.])\s+(?=\d)/g, "");
+  const compactNotes = normalizeRateText(notes);
   if (fixedGuarantee) {
     state.settings.guaranteeMode = "fixed";
     state.settings.guaranteeRate = 0;
@@ -527,7 +534,7 @@ function applyCsvEnhancement(item) {
     }
   }
 
-  const monthlyRate = Number(compactNotes.match(/(?:月額手数料|月額保証料|月次保証料|支払手数料|月々)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] || 0);
+  const monthlyRate = Number(compactNotes.match(/(?:月額手数料|月額保証料|月次保証料|支払手数料|月々|月額)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] || 0);
   const monthlyFixed =
     amountNear(notes, /(?:月額手数料|月額保証料|月次保証料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料)[^。・\n\r]*?[\d,，]+円/) ||
     amountNear(notes, /月額\s*[:：]?\s*[\d,，]+円/);
