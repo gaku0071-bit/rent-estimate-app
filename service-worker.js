@@ -1,5 +1,5 @@
-const CACHE_NAME = "rent-estimate-v11";
-const APP_SHELL = ["/", "/index.html", "/styles.css?v=20260531-2", "/app.js?v=20260531-2", "/manifest.json", "/icon.svg", "/store-logo.png"];
+const CACHE_NAME = "rent-estimate-v12";
+const APP_SHELL = ["/", "/index.html", "/styles.css?v=20260531-3", "/app.js?v=20260531-3", "/manifest.json", "/icon.svg", "/store-logo.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));

@@ -125,6 +125,20 @@ function setFeeLabel(id, label) {
   if (fee && label) fee.label = label;
 }
 
+function isMonthlyGuaranteeLabel(label) {
+  return /月額保証|月次保証|月額手数料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料/.test(String(label || ""));
+}
+
+function normalizeManualFee(fee) {
+  if (!fee || !isMonthlyGuaranteeLabel(fee.label)) return false;
+  fee.type = "monthly";
+  fee.timing = "monthly";
+  fee.guaranteeTarget = false;
+  fee.noProrate = true;
+  fee.noInitialEstimate = true;
+  return true;
+}
+
 function parseCsvText(text) {
   const rows = [];
   let row = [];
@@ -838,7 +852,7 @@ function skipProration(fee) {
 }
 
 function estimateMonthlyChargeFee(fee) {
-  return ["monthly", "optionalParking"].includes(fee.type) && fee.id !== "monthlyGuaranteeFee";
+  return ["monthly", "optionalParking"].includes(fee.type) && fee.id !== "monthlyGuaranteeFee" && !fee.noInitialEstimate;
 }
 
 function proratedRows() {
@@ -1212,6 +1226,9 @@ document.addEventListener("input", (event) => {
     if (!fee.derived || target.dataset.field !== "amount") {
       fee[target.dataset.field] = target.dataset.field === "amount" ? Number(target.value || 0) : target.value;
     }
+    if (target.dataset.field === "label" && normalizeManualFee(fee)) {
+      renderFeeEditor();
+    }
   }
   syncDerivedFees();
   renderGuaranteeTargets();
@@ -1258,7 +1275,9 @@ document.addEventListener("change", (event) => {
     return;
   }
   if (target.dataset?.field) {
-    state.fees[Number(target.dataset.index)][target.dataset.field] = target.value;
+    const fee = state.fees[Number(target.dataset.index)];
+    fee[target.dataset.field] = target.value;
+    if (target.dataset.field === "label") normalizeManualFee(fee);
     syncDerivedFees();
     renderGuaranteeTargets();
     updateGuaranteeFeeInput();
@@ -1295,7 +1314,7 @@ el("resetButton").addEventListener("click", () => {
 });
 
 el("addFeeButton").addEventListener("click", () => {
-  state.fees.push({ id: `custom-${Date.now()}`, label: "追加項目", amount: 0, type: "initial", timing: "initial", guaranteeTarget: false, derived: false });
+  state.fees.push({ id: `custom-${Date.now()}`, label: "追加項目", amount: 0, type: "initial", timing: "initial", guaranteeTarget: false, noProrate: false, noInitialEstimate: false, derived: false });
   renderGuaranteeTargets();
   renderFeeEditor();
 });
