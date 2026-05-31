@@ -65,6 +65,7 @@ const feeDefinitions = [
   ["礼金", "keyMoney", "initial", false, "initial"],
   ["仲介手数料", "brokerageFee", "initial", false, "initial"],
   ["初回保証料", "guaranteePersonal", "personal", false, "initial"],
+  ["初回保証料", "guaranteeCorporate", "corporate", false, "initial"],
   ["保険料（2年）", "insuranceFee", "initial", false, "initial"],
   ["室内清掃費用", "cleaningFee", "initial", false, "initial"],
   ["水廻り消毒料", "waterSanitizingFee", "initial", false, "initial"],
@@ -226,9 +227,9 @@ function normalizeRateText(text) {
 
 function inferPaymentTiming(text, fallback = "initial") {
   const value = String(text || "");
-  const hasInitial = value.includes("契約時");
+  const hasInitial = value.includes("契約時") || value.includes("入居時");
   const hasMoveout = value.includes("退去時");
-  if ((hasInitial && hasMoveout) || value.includes("退去時払い可")) return "choice";
+  if ((hasInitial && hasMoveout) || value.includes("退去時払い可") || /(?:契約時|入居時)(?:または|もしくは|又は)退去時|退去時(?:または|もしくは|又は)(?:契約時|入居時)/.test(value)) return "choice";
   if (value.includes("月額")) return "monthly";
   if (hasMoveout) return "moveout";
   return fallback;
@@ -498,7 +499,7 @@ function applyCsvEnhancement(item) {
     applied.push("水落費用");
   }
 
-  const cleaningFee = amountNear(notes, /(?:室内清掃料|室内清掃費|退去時室内清掃料|退去時清掃料|退去時清掃費|ハウスクリーニング料?|ルームクリーニング費用|ルームクリーニング料|ルームクリーニング費|ルームクリーニング|るーむくりーにんぐ費用|るーむくりーにんぐ料|るーむくりーにんぐ費|家電清掃料|清掃料)[^。・\n\r]*?[\d,，]+円/);
+  const cleaningFee = amountNear(notes, /(?:室内清掃料|室内清掃費|退去時室内清掃料|退去時清掃料|退去時清掃費|退去清掃料|退去清掃費|ハウスクリーニング料?|ルームクリーニング費用|ルームクリーニング料|ルームクリーニング費|ルームクリーニング|るーむくりーにんぐ費用|るーむくりーにんぐ料|るーむくりーにんぐ費|家電清掃料|清掃料)[^。・\n\r]*?[\d,，]+円/);
   if (cleaningFee) {
     setFeeAmount("cleaningFee", cleaningFee);
     setFeeLabel("cleaningFee", /ルームクリーニング|るーむくりーにんぐ/.test(notes) ? "ルームクリーニング費用" : /クリーニング/.test(notes) ? "ハウスクリーニング" : "清掃料");
@@ -636,6 +637,7 @@ function resetToBlank() {
   el("includeParking").checked = false;
   el("includeAcCleaning").checked = false;
   el("includePetFee").checked = false;
+  el("includeCorporateGuarantee").checked = false;
   el("includeFreeRentNote").checked = false;
   el("pdfInput").value = "";
   el("csvInput").value = "";
@@ -675,6 +677,7 @@ function loadData(data) {
   el("includeParking").checked = Boolean(settings.includeParking);
   el("includeAcCleaning").checked = Boolean(settings.includeAcCleaning);
   el("includePetFee").checked = Boolean(settings.includePetFee);
+  el("includeCorporateGuarantee").checked = Boolean(settings.includeCorporateGuarantee);
 
   state.property = property;
   state.settings = settings;
@@ -685,7 +688,7 @@ function loadData(data) {
     type,
     timing: settings.feeTimings?.[key] || timing,
     guaranteeTarget,
-    derived: ["guaranteePersonal", "brokerageFee"].includes(key) || (key === "monthlyGuaranteeFee" && settings.monthlyGuaranteeMode === "percent"),
+    derived: ["guaranteePersonal", "guaranteeCorporate", "brokerageFee"].includes(key) || (key === "monthlyGuaranteeFee" && settings.monthlyGuaranteeMode === "percent"),
   }));
   (settings.extraFees || []).forEach((fee) => addExtraFee(fee));
   syncDerivedFees();
@@ -697,7 +700,7 @@ function loadData(data) {
 function applicableFee(fee) {
   if (isPetRelatedFee(fee)) return el("includePetFee").checked;
   if (fee.type === "personal") return state.estimateType === "personal";
-  if (fee.type === "corporate") return state.estimateType === "corporate";
+  if (fee.type === "corporate") return state.estimateType === "corporate" && (fee.id !== "guaranteeCorporate" || el("includeCorporateGuarantee").checked);
   if (fee.type === "optionalParking") return el("includeParking").checked;
   if (fee.type === "optionalAc") return el("includeAcCleaning").checked;
   return true;
@@ -737,6 +740,17 @@ function timingChoiceFees() {
   return state.fees.filter((fee) => fee.timing === "choice" && Number(fee.amount || 0) !== 0);
 }
 
+function recipientHonorific() {
+  return state.estimateType === "personal" ? "様" : "御中";
+}
+
+function corporateGuaranteeMessage() {
+  if (state.estimateType !== "corporate") return "";
+  return el("includeCorporateGuarantee").checked
+    ? "法人宛のため、初回保証料を見積に含めています。不要な場合は「法人宛に初回保証料を含める」のチェックを外してください。"
+    : "法人宛のため、初回保証料は見積に含めていません。保証会社利用が必要な場合は「法人宛に初回保証料を含める」にチェックしてください。";
+}
+
 function guaranteeCandidate(fee) {
   return fee.id !== "monthlyGuaranteeFee" && ["monthly", "optionalParking"].includes(fee.type);
 }
@@ -758,10 +772,11 @@ function guaranteeAmount() {
 }
 
 function syncGuaranteeFee() {
-  const guaranteeFee = state.fees.find((fee) => fee.id === "guaranteePersonal");
-  if (guaranteeFee && state.settings?.guaranteeMode !== "fixed") {
-    guaranteeFee.amount = guaranteeAmount();
-  }
+  const amount = guaranteeAmount();
+  ["guaranteePersonal", "guaranteeCorporate"].forEach((id) => {
+    const guaranteeFee = state.fees.find((fee) => fee.id === id);
+    if (guaranteeFee) guaranteeFee.amount = amount;
+  });
 }
 
 function syncBrokerageFee() {
@@ -789,7 +804,7 @@ function syncDerivedFees() {
 }
 
 function updateGuaranteeFeeInput() {
-  ["guaranteePersonal", "brokerageFee", "monthlyGuaranteeFee"].forEach((id) => {
+  ["guaranteePersonal", "guaranteeCorporate", "brokerageFee", "monthlyGuaranteeFee"].forEach((id) => {
     const index = state.fees.findIndex((fee) => fee.id === id);
     if (index < 0) return;
     const input = document.querySelector(`[data-field="amount"][data-index="${index}"]`);
@@ -1038,7 +1053,9 @@ function renderFeeEditor() {
 function renderGuaranteeTargets() {
   const wrap = el("guaranteeTargets");
   const candidates = state.fees.filter(guaranteeCandidate);
+  const corporateMessage = corporateGuaranteeMessage();
   wrap.innerHTML = `
+    ${corporateMessage ? `<div class="timing-notice corporate-guarantee-notice">${escapeHtml(corporateMessage)}</div>` : ""}
     <div class="target-summary">
       <span>${state.settings?.guaranteeMode === "fixed" ? "固定額で読込" : `対象合計 ${yen.format(guaranteeBaseTotal())}`}</span>
       <strong>初回保証料 ${yen.format(guaranteeAmount())}</strong>
@@ -1084,6 +1101,7 @@ function renderEstimate() {
     rentRuleNote,
     freeRange ? "フリーレント期間に重なる賃料と共益費・管理費を控除しています。" : "",
     choiceFees.length ? `支払時期の選択が必要な項目があります（${escapeHtml(choiceFees.map((fee) => fee.label).join("、"))}）。要選択の項目は契約時候補として合計に含めています。退去時払いにする場合は、費用項目欄で支払時期を退去時に変更してください。` : "",
+    corporateGuaranteeMessage(),
     el("includeFreeRentNote").checked && freeRent ? `<strong>${escapeHtml(freeRent)}</strong>` : "",
     "本見積はPDF記載内容をもとにした概算です。申込条件、入居日、管理会社確認により金額が変動する場合があります。",
     guaranteeNote ? `保証会社条件: ${escapeHtml(guaranteeNote)}` : "",
@@ -1106,7 +1124,7 @@ function renderEstimate() {
         問い合わせ番号 ${escapeHtml(property.inquiry || "-")}
       </div>
     </div>
-    <div class="recipient">${escapeHtml(textValue("recipientName") || "お客様")} 御中</div>
+    <div class="recipient">${escapeHtml(textValue("recipientName") || "お客様")} ${recipientHonorific()}</div>
     <div class="property-box">
       <dl>
         ${definition("物件名", property.title, "号室", property.room)}
@@ -1274,6 +1292,13 @@ document.addEventListener("change", (event) => {
     renderEstimate();
     return;
   }
+  if (target.id === "includeCorporateGuarantee") {
+    syncDerivedFees();
+    renderGuaranteeTargets();
+    renderEstimate();
+    el("status").textContent = corporateGuaranteeMessage();
+    return;
+  }
   if (target.dataset?.field) {
     const fee = state.fees[Number(target.dataset.index)];
     fee[target.dataset.field] = target.value;
@@ -1292,7 +1317,11 @@ document.addEventListener("click", (event) => {
     document.querySelectorAll("[data-estimate-type]").forEach((button) => {
       button.classList.toggle("active", button === target);
     });
+    renderGuaranteeTargets();
     renderEstimate();
+    if (state.estimateType === "corporate") {
+      el("status").textContent = corporateGuaranteeMessage();
+    }
   }
   if (target.dataset?.remove) {
     state.fees.splice(Number(target.dataset.remove), 1);
