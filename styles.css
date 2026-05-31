@@ -365,26 +365,56 @@ select:focus {
 }
 
 .a4 {
-  width: 210mm;
-  min-height: 297mm;
+  width: 297mm;
+  min-height: 210mm;
   margin: 0 auto;
   background: var(--paper);
   box-shadow: 0 14px 40px rgba(23, 32, 38, 0.18);
-  padding: 14mm;
+  padding: 11mm 12mm;
 }
 
 .estimate-head {
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
   border-bottom: 3px solid var(--ink);
-  padding-bottom: 10px;
+  padding-bottom: 8px;
 }
 
 .estimate-head h2 {
-  font-size: 24px;
+  flex: 1;
+  text-align: center;
+  font-size: 23px;
+  white-space: nowrap;
+}
+
+.brand-block {
+  display: grid;
+  grid-template-columns: 48mm 1fr;
+  align-items: center;
+  gap: 8px;
+  min-width: 108mm;
+}
+
+.store-logo {
+  width: 48mm;
+  height: auto;
+  display: block;
+}
+
+.store-info {
+  display: grid;
+  gap: 2px;
+  color: var(--ink);
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+.store-info strong {
+  font-size: 12px;
 }
 
 .meta {
+  min-width: 42mm;
   text-align: right;
   color: var(--muted);
   font-size: 12px;
@@ -392,7 +422,7 @@ select:focus {
 }
 
 .recipient {
-  margin: 16px 0 14px;
+  margin: 10px 0 9px;
   font-size: 18px;
   font-weight: 700;
 }
@@ -409,7 +439,7 @@ select:focus {
 
 .property-box {
   border: 1px solid var(--line);
-  margin-bottom: 12px;
+  margin-bottom: 9px;
 }
 
 .property-box dl {
@@ -421,7 +451,7 @@ select:focus {
 .property-box dt,
 .property-box dd {
   border-bottom: 1px solid var(--line);
-  padding: 6px 8px;
+  padding: 5px 7px;
   font-size: 11px;
 }
 
@@ -437,8 +467,8 @@ select:focus {
 
 .estimate-total {
   justify-content: space-between;
-  margin: 12px 0;
-  padding: 10px 12px;
+  margin: 9px 0;
+  padding: 8px 11px;
   background: #edf5f4;
   border: 1px solid #bad8d6;
 }
@@ -449,19 +479,19 @@ select:focus {
 }
 
 .estimate-total strong {
-  font-size: 27px;
+  font-size: 25px;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 10.5px;
 }
 
 th,
 td {
   border: 1px solid var(--line);
-  padding: 6px 8px;
+  padding: 5px 7px;
 }
 
 th {
@@ -486,7 +516,7 @@ th.amount {
 }
 
 .summary-box {
-  margin-top: 12px;
+  margin-top: 9px;
   border: 1px solid var(--line);
 }
 
@@ -497,7 +527,7 @@ th.amount {
   gap: 12px;
   background: #fafafa;
   border-bottom: 1px solid var(--line);
-  padding: 8px 10px;
+  padding: 7px 9px;
 }
 
 .summary-head span {
@@ -507,7 +537,7 @@ th.amount {
 }
 
 .summary-head strong {
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .monthly-box table th {
@@ -519,7 +549,7 @@ th.amount {
 }
 
 .notes {
-  margin-top: 12px;
+  margin-top: 9px;
   color: var(--muted);
   font-size: 10.5px;
   line-height: 1.6;
@@ -564,6 +594,24 @@ th.amount {
     min-height: auto;
     padding: 20px;
   }
+
+  .estimate-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .estimate-head h2 {
+    text-align: left;
+  }
+
+  .brand-block {
+    grid-template-columns: 150px 1fr;
+    min-width: 0;
+  }
+
+  .store-logo {
+    width: 150px;
+  }
 }
 
 @media print {
@@ -588,15 +636,15 @@ th.amount {
   }
 
   .a4 {
-    width: 210mm;
-    min-height: 297mm;
+    width: 297mm;
+    min-height: 210mm;
     box-shadow: none;
     margin: 0;
-    padding: 14mm;
+    padding: 11mm 12mm;
   }
 
   @page {
-    size: A4;
+    size: A4 landscape;
     margin: 0;
   }
 }

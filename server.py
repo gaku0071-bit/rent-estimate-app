@@ -637,6 +637,7 @@ class AppHandler(BaseHTTPRequestHandler):
             ".css": "text/css; charset=utf-8",
             ".js": "application/javascript; charset=utf-8",
             ".json": "application/json; charset=utf-8",
+            ".png": "image/png",
         }.get(path.suffix, "application/octet-stream")
         self.send_response(200)
         self.send_header("Content-Type", content_type)

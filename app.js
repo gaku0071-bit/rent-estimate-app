@@ -51,6 +51,13 @@ const state = {
   filteredCsvRows: [],
 };
 
+const storeInfo = {
+  name: "いい部屋ネット札幌大通店",
+  address1: "札幌市中央区南２条西６丁目７−２",
+  address2: "アルファスクエア大通１F",
+  tel: "011-205-3032",
+};
+
 const feeDefinitions = [
   ["賃料", "rent", "monthly", true, "monthly"],
   ["共益費・管理費", "commonFee", "monthly", true, "monthly"],
@@ -1063,6 +1070,15 @@ function renderEstimate() {
 
   el("estimate").innerHTML = `
     <div class="estimate-head">
+      <div class="brand-block">
+        <img class="store-logo" src="store-logo.png" alt="いい部屋ネット" />
+        <div class="store-info">
+          <strong>${escapeHtml(storeInfo.name)}</strong>
+          <span>${escapeHtml(storeInfo.address1)}</span>
+          <span>${escapeHtml(storeInfo.address2)}</span>
+          <span>TEL ${escapeHtml(storeInfo.tel)}</span>
+        </div>
+      </div>
       <h2>初期費用御見積書 <span class="quote-kind">${kind}</span></h2>
       <div class="meta">
         発行日 ${escapeHtml(el("issueDate").value || today())}<br>
