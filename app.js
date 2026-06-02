@@ -693,7 +693,7 @@ function loadData(data) {
     id: key,
     label: settings.feeLabels?.[key] || label,
     amount: amounts[key] || 0,
-    type,
+    type: settings.feeTypes?.[key] || type,
     timing: settings.feeTimings?.[key] || timing,
     guaranteeTarget,
     derived: ["guaranteePersonal", "guaranteeCorporate", "brokerageFee"].includes(key) || (key === "monthlyGuaranteeFee" && settings.monthlyGuaranteeMode === "percent"),

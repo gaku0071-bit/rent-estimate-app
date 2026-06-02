@@ -477,7 +477,8 @@ def inferred_extra_fee_category(label: str, context: str) -> str:
         ("gasLeaseFee", r"水道|給湯器|リース|北ガス|上下水"),
     ]
     for category, pattern in category_patterns:
-        if re.search(pattern, value, re.IGNORECASE):
+        target = value if category == "monthlyGuaranteeFee" else label
+        if re.search(pattern, target, re.IGNORECASE):
             return category
     return ""
 
@@ -489,6 +490,8 @@ def should_skip_extra_fee(label: str, context: str) -> bool:
     if re.search(r"賃料|家賃|共益|管理費|敷金|礼金|保険|仲介|更新|広告|キャンセル|合計|小計|税込|税別|税額|請求|振込|日割|翌月|前家賃|駐車", label):
         return True
     if non_customer_fee_label(label):
+        return True
+    if re.search(r"取引態様|特記事項|条件|設備|セキュリティ|その他|曜日|営業時間|掲載|広告|転載", label):
         return True
     if re.search(r"保証会社|保証料|保証委託料", label) and not inferred_extra_fee_category(label, context) == "monthlyGuaranteeFee":
         return True
@@ -593,7 +596,7 @@ def parse_property(text: str) -> dict:
     antibacterial_fee, antibacterial_label, antibacterial_timing = pick_labeled_money(fee_rules["antibacterialFee"], text)
     insurance_fee = pick_insurance_fee(text)
     support_fee, support_label, support_timing = pick_labeled_money(fee_rules["supportFee"], text)
-    if support_fee and support_timing == "initial":
+    if support_fee and support_timing == "initial" and re.search(r"24|２４|月額|リペアサービス", support_label):
         support_timing = "monthly"
     ac_cleaning_fee, ac_cleaning_label, ac_cleaning_timing = pick_labeled_money(fee_rules["acCleaningFee"], text)
     stove_fee, stove_label, stove_timing = pick_labeled_money(fee_rules["stoveMaintenanceFee"], text)
@@ -610,7 +613,13 @@ def parse_property(text: str) -> dict:
     key_money = parse_deposit_or_key_money("礼金", rent, text)
 
     guarantee_note = extract_guarantee_note(text)
-    monthly_subtotal = rent + common_fee + town_fee + support_fee + gas_lease_fee
+    monthly_subtotal = (
+        rent
+        + common_fee
+        + (town_fee if town_timing == "monthly" else 0)
+        + (support_fee if support_timing == "monthly" else 0)
+        + (gas_lease_fee if gas_lease_timing == "monthly" else 0)
+    )
     guarantee_text = f"{guarantee_note}\n{text}" if guarantee_note else text
     guarantee_text_for_rates = normalize_rate_text(guarantee_text)
     monthly_guarantee_rate_patterns = [
@@ -728,6 +737,11 @@ def parse_property(text: str) -> dict:
                 "waterDrainFee": water_drain_timing,
                 "monthlyGuaranteeFee": "monthly" if monthly_guarantee_fee else monthly_guarantee_timing,
                 "keyMoney": "initial",
+            },
+            "feeTypes": {
+                "supportFee": "monthly" if support_timing == "monthly" else "initial",
+                "townFee": "monthly" if town_timing == "monthly" else "initial",
+                "gasLeaseFee": "monthly" if gas_lease_timing == "monthly" else "initial",
             },
             "includeParking": False,
             "includeAcCleaning": True,
