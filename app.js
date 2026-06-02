@@ -127,7 +127,7 @@ function setFeeLabel(id, label) {
 }
 
 function isMonthlyGuaranteeLabel(label) {
-  return /月額保証|月次保証|月額手数料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料/.test(String(label || ""));
+  return /月額保証|月次保証|毎月保証|月々保証|月額手数料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料|引落手数料|家賃等決済サービス利用料|決済サービス利用料/.test(String(label || ""));
 }
 
 function normalizeManualFee(fee) {
@@ -549,7 +549,12 @@ function applyCsvEnhancement(item) {
     }
   }
 
-  const monthlyRate = Number(compactNotes.match(/(?:月額手数料|月額保証料|月次保証料|支払手数料|月々|月額)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] || 0);
+  const monthlyRate = Number(
+    compactNotes.match(/(?:月額手数料|月額保証料|月次保証料|月額事務手数料|毎月保証料|月々保証料|支払手数料|収納代行手数料)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] ||
+      compactNotes.match(/(?:月額|毎月|月々)(?!賃料|家賃|賃料等|家賃等)[^。・\n\r]{0,24}?(?:保証|手数料)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] ||
+      compactNotes.match(/(?:初回|初回保証料|契約時)[^。・\n\r]{0,40}?(?:%|パーセント)[^。・\n\r]{0,30}?(?:月額|毎月|月々)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] ||
+      0,
+  );
   const monthlyFixed =
     amountNear(notes, /(?:月額手数料|月額保証料|月次保証料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料)[^。・\n\r]*?[\d,，]+円/) ||
     amountNear(notes, /月額\s*[:：]?\s*[\d,，]+円/);

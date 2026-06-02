@@ -26,12 +26,22 @@ DEFAULT_FEE_RULES = {
         "室内清掃料",
         "室内清掃費",
         "清掃料",
+        "清掃費",
+        "清掃代",
         "ハウスクリーニング",
         "ハウスクリーニング料",
+        "ハウスクリーニング費",
+        "ハウスクリーニング代",
         "ルームクリーニング費用",
         "ルームクリーニング料",
         "ルームクリーニング費",
         "ルームクリーニング",
+        "室内クリーニング料",
+        "室内クリーニング費",
+        "退室清掃料",
+        "退室清掃費",
+        "退室時清掃料",
+        "退室時清掃費",
         "るーむくりーにんぐ費用",
         "るーむくりーにんぐ料",
         "るーむくりーにんぐ費",
@@ -46,12 +56,16 @@ DEFAULT_FEE_RULES = {
         "水廻消毒料",
         "水廻り消毒料",
         "水廻り消毒費",
+        "水廻り消毒代",
         "水廻消毒費",
+        "水廻消毒代",
         "水回消毒料",
         "水回り消毒料",
         "水回り消毒料金",
         "水廻り消毒料金",
         "水回り消毒費",
+        "水回り消毒代",
+        "水回消毒代",
     ],
     "keyFee": [
         "カギ交換費用",
@@ -64,6 +78,8 @@ DEFAULT_FEE_RULES = {
         "シリンダ交換料",
         "シリンダー交換費",
         "シリンダ交換費",
+        "シリンダー交換代",
+        "シリンダ交換代",
         "鍵シリンダーローテーション費用",
         "鍵交換料",
         "鍵交換代",
@@ -84,6 +100,15 @@ DEFAULT_FEE_RULES = {
         "除菌消臭費",
         "室内消毒料",
         "室内消毒費",
+        "消毒料",
+        "消毒費",
+        "消毒代",
+        "抗菌代",
+        "抗菌消毒料",
+        "抗菌消毒費",
+        "抗菌消臭代",
+        "室内抗菌消臭料",
+        "室内抗菌消臭費",
     ],
     "supportFee": [
         "24時間管理料",
@@ -91,18 +116,30 @@ DEFAULT_FEE_RULES = {
         "24時間管理",
         "24時間サポート料",
         "24時間サポート費",
+        "ホット２４hサービス",
+        "ホット24hサービス",
+        "ほっと２４hサービス",
+        "ほっと24hサービス",
         "シャーメゾンSUPPORT24",
         "シャーメゾンＳＵＰＰＯＲＴ２４",
         "ギムサポートクラブ",
         "リペアサービス",
         "夜間サポート",
         "24時間サポート",
+        "24時間駆けつけサービス",
+        "24時間かけつけサービス",
         "安心サポート",
+        "安心サポート24",
         "緊急サポート",
         "新生活サポート",
         "暮らしサポート",
         "ライフサポート",
         "管理サポート",
+        "入居者サポート費用",
+        "入居者サポート料",
+        "タカラBB設備保守費",
+        "くらしーど24",
+        "くらしーど２４",
     ],
     "acCleaningFee": [
         "エアコン洗浄料",
@@ -126,6 +163,7 @@ DEFAULT_FEE_RULES = {
         "FF分解清掃費用",
         "FFストーブ分解清掃料",
         "冷暖房設備整備料",
+        "エコジョーズ整備料",
     ],
     "deodorizingFee": [
         "退去時ペット消臭料",
@@ -161,6 +199,13 @@ DEFAULT_FEE_RULES = {
         "支払手数料",
         "口座振替料",
         "口振手数料",
+        "引落手数料",
+        "家賃等決済サービス利用料",
+        "決済サービス利用料",
+        "毎月保証料",
+        "月々保証料",
+        "保証会社月額手数料",
+        "保証会社月額保証料",
     ],
 }
 
@@ -405,11 +450,48 @@ def generic_fee_type(timing: str) -> str:
 def non_customer_fee_label(label: str) -> bool:
     return bool(
         re.search(
-            r"契約事務手数料|契約時事務手数料|事務手数料|契約手数料|書類作成|更新料|キャンセル|広告料|AD|仲介手数料|保証会社|保証料|保険",
+            r"契約事務手数料|契約時事務手数料|事務手数料|契約手数料|書類作成|更新料|キャンセル|広告料|AD|仲介手数料|保険",
             label,
             re.IGNORECASE,
         )
     )
+
+
+def inferred_extra_fee_category(label: str, context: str) -> str:
+    value = f"{label}{context}"
+    category_patterns = [
+        ("monthlyGuaranteeFee", r"月額保証|月次保証|毎月保証|月々保証|月額手数料|月額事務手数料|収納代行|支払手数料|口座振替|口振|引落|決済サービス"),
+        ("cleaningFee", r"清掃|クリーニング|くりーにんぐ|退室|原状回復"),
+        ("waterSanitizingFee", r"水廻|水回|水まわ|水周|水まわり"),
+        ("keyFee", r"鍵|カギ|キー|シリンダ|シリンダー"),
+        ("antibacterialFee", r"抗菌|除菌|消毒|殺菌"),
+        ("supportFee", r"24|２４|サポート|リペア|安心|くらし|暮らし|ライフ|クラブ|緊急|駆けつけ|かけつけ"),
+        ("acCleaningFee", r"エアコン|AC|ＡＣ|空調"),
+        ("stoveMaintenanceFee", r"ストーブ|暖房|FF|ＦＦ|冷暖房|エコジョーズ整備"),
+        ("deodorizingFee", r"消臭|脱臭|防臭"),
+        ("petFee", r"ペット|飼育"),
+        ("waterDrainFee", r"水落|水抜|水落し|エコジョーズ"),
+        ("gasLeaseFee", r"水道|給湯器|リース|北ガス|上下水"),
+    ]
+    for category, pattern in category_patterns:
+        if re.search(pattern, value, re.IGNORECASE):
+            return category
+    return ""
+
+
+def should_skip_extra_fee(label: str, context: str) -> bool:
+    value = f"{label}{context}"
+    if re.search(r"無し|なし|不要|無料", value):
+        return True
+    if re.search(r"賃料|家賃|共益|管理費|敷金|礼金|保険|仲介|更新|広告|キャンセル|合計|小計|税込|税別|税額|請求|振込|日割|翌月|前家賃|駐車", label):
+        return True
+    if non_customer_fee_label(label):
+        return True
+    if re.search(r"保証会社|保証料|保証委託料", label) and not inferred_extra_fee_category(label, context) == "monthlyGuaranteeFee":
+        return True
+    if re.fullmatch(r"[\d,，.～〜/\\-]+", label):
+        return True
+    return False
 
 
 def extract_unregistered_fees(text: str, fee_rules: dict[str, list[str]]) -> list[dict]:
@@ -431,36 +513,41 @@ def extract_unregistered_fees(text: str, fee_rules: dict[str, list[str]]) -> lis
     search_text = text.replace("\n", "")
     extras: list[dict] = []
     seen: set[tuple[str, int, str]] = set()
-    pattern = re.compile(r"(?:^|・|○\s*)([^・：:\n]{2,36}?)[：:]\s*([^・]{0,48}?)([\d,，]+)\s*円([^・]{0,48})")
+    patterns = [
+        re.compile(r"(?:^|・|○\s*)([^・：:\n]{2,36}?)[：:]\s*([^・]{0,48}?)([\d,，]+)\s*円([^・]{0,48})"),
+        re.compile(r"(?:^|・|○\s*)([^・：:\n]{2,36}?)(?:\s|　)*(契約時|退去時|月額|入居時|毎月)?(?:\s|　)*(?:税込|非課税|課税|または|もしくは|又は|払い可|（税込）|\\(税込\\))*\s*([\d,，]+)\s*円([^・]{0,48})"),
+    ]
 
-    for match in pattern.finditer(search_text):
-        label = re.sub(r"\s+", "", match.group(1)).strip("・:：、。")
-        context = "".join(match.groups())
-        amount = money_to_int(match.group(3))
-        if not label or not amount:
-            continue
-        if non_customer_fee_label(label):
-            continue
-        if any(known in label or label in known for known in known_labels):
-            continue
-        if re.search(r"無し|なし|不要", context):
-            continue
-        timing = infer_fee_timing(context, label)
-        key = (label, amount, timing)
-        if key in seen:
-            continue
-        seen.add(key)
-        extras.append(
-            {
-                "id": f"extra-{len(extras) + 1}",
-                "label": label,
-                "amount": amount,
-                "timing": timing,
-                "type": generic_fee_type(timing),
-                "guaranteeTarget": False,
-                "noProrate": timing == "monthly",
-            }
-        )
+    for pattern in patterns:
+        for match in pattern.finditer(search_text):
+            label = re.sub(r"\s+", "", match.group(1)).strip("・:：、。")
+            context = "".join(value or "" for value in match.groups())
+            amount = money_to_int(match.group(3))
+            if not label or not amount:
+                continue
+            if any(known in label or label in known for known in known_labels):
+                continue
+            category = inferred_extra_fee_category(label, context)
+            if not category or should_skip_extra_fee(label, context):
+                continue
+            timing = "monthly" if category == "monthlyGuaranteeFee" else infer_fee_timing(context, label)
+            fee_type = "monthly" if timing == "monthly" else "initial"
+            key = (label, amount, timing)
+            if key in seen:
+                continue
+            seen.add(key)
+            extras.append(
+                {
+                    "id": f"extra-{len(extras) + 1}",
+                    "label": label,
+                    "amount": amount,
+                    "timing": timing,
+                    "type": fee_type,
+                    "guaranteeTarget": False,
+                    "noProrate": timing == "monthly",
+                    "noInitialEstimate": category == "monthlyGuaranteeFee",
+                }
+            )
     return extras
 
 
@@ -523,9 +610,14 @@ def parse_property(text: str) -> dict:
     monthly_subtotal = rent + common_fee + town_fee + support_fee + gas_lease_fee
     guarantee_text = f"{guarantee_note}\n{text}" if guarantee_note else text
     guarantee_text_for_rates = normalize_rate_text(guarantee_text)
-    monthly_guarantee_rate = pick_percent(
-        r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|支払手数料|月々|月額)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
-        guarantee_text_for_rates,
+    monthly_guarantee_rate_patterns = [
+        r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|毎月保証料|月々保証料|支払手数料|収納代行手数料)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
+        r"(?:月額|毎月|月々)(?!賃料|家賃|賃料等|家賃等)[^。・\n\r]{0,24}?(?:保証|手数料)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
+        r"(?:初回|初回保証料|契約時)[^。・\n\r]{0,40}?(?:%|パーセント)[^。・\n\r]{0,30}?(?:月額|毎月|月々)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
+    ]
+    monthly_guarantee_rate = next(
+        (rate for rate in (pick_percent(pattern, guarantee_text_for_rates) for pattern in monthly_guarantee_rate_patterns) if rate),
+        0,
     )
     if monthly_guarantee_rate:
         monthly_fixed_extras = sum(
