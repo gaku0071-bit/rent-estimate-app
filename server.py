@@ -300,9 +300,12 @@ def pick_labeled_money(labels: list[str], text: str) -> tuple[int, str, str]:
             if start == -1:
                 break
             chunk = searchable_text[start : start + 180]
+            prefix = searchable_text[max(0, start - 16) : start]
+            if label in {"消毒料", "消毒費", "消毒代"} and re.search(r"(?:水廻|水廻り|水回|水回り|水まわり|ペット)$", prefix):
+                search_from = start + len(label)
+                continue
             next_item = chunk.find("・", len(label))
             item_text = chunk[:next_item] if next_item != -1 else chunk
-            prefix = searchable_text[max(0, start - 16) : start]
             if label in {"清掃料", "清掃費"} and re.search(r"(エアコン|暖房|ストーブ|冷暖房|FF)", prefix + item_text):
                 search_from = start + len(label)
                 continue
