@@ -604,6 +604,7 @@ function syncProrateFromMoveInDate() {
   const daysInMonth = new Date(year, month, 0).getDate();
   el("monthDays").value = daysInMonth;
   el("prorateDays").value = Math.max(daysInMonth - day + 1, 0);
+  el("includeNextMonth").checked = day >= 15;
 }
 
 function resetToBlank() {
@@ -635,6 +636,7 @@ function resetToBlank() {
   el("monthDays").value = 30;
   el("guaranteeRate").value = 50;
   el("includeParking").checked = false;
+  el("includeNextMonth").checked = false;
   el("includeAcCleaning").checked = false;
   el("includePetFee").checked = false;
   el("includeCorporateGuarantee").checked = false;
@@ -675,6 +677,7 @@ function loadData(data) {
   el("freeRentEnd").value = "";
   syncProrateFromMoveInDate();
   el("includeParking").checked = Boolean(settings.includeParking);
+  el("includeNextMonth").checked = Boolean(moveInDateParts()?.day >= 15);
   el("includeAcCleaning").checked = Boolean(settings.includeAcCleaning);
   el("includePetFee").checked = Boolean(settings.includePetFee);
   el("includeCorporateGuarantee").checked = Boolean(settings.includeCorporateGuarantee);
@@ -858,12 +861,15 @@ function freeRentRange() {
 }
 
 function shouldIncludeNextMonthRent() {
-  const parts = moveInDateParts();
-  return parts ? parts.day >= 15 : false;
+  return Boolean(moveInDateParts() && el("includeNextMonth").checked);
+}
+
+function proratableMonthlyFee(fee) {
+  return ["rent", "commonFee", "parkingFee"].includes(fee.id) || fee.type === "optionalParking";
 }
 
 function skipProration(fee) {
-  return Boolean(fee.noProrate) || ["supportFee", "townFee", "gasLeaseFee"].includes(fee.id);
+  return Boolean(fee.noProrate) || !proratableMonthlyFee(fee);
 }
 
 function estimateMonthlyChargeFee(fee) {
@@ -1093,9 +1099,9 @@ function renderEstimate() {
   const moveInParts = moveInDateParts();
   const freeRange = freeRentRange();
   const rentRuleNote = moveInParts
-    ? moveInParts.day >= 15
-      ? "入居日が15日以降のため、入居月の日割と翌月分の月額費用を見積に含めています。24時間管理料と町内会費は日割せず、入居月分を満額で含めています。駐車場を含める場合は駐車場も日割・翌月分を計算します。"
-      : "入居日が14日以前のため、入居月の日割のみ見積に含めています。24時間管理料と町内会費は日割せず、入居月分を満額で含めています。駐車場を含める場合は駐車場も日割計算します。"
+    ? shouldIncludeNextMonthRent()
+      ? "翌月分を初期費用に含める設定のため、翌月分の月額費用を見積に含めています。日割は家賃、共益費・管理費、駐車場のみ計算し、その他の月額費用は日割せず入居月分を満額で含めています。"
+      : "入居月の日割のみ見積に含めています。日割は家賃、共益費・管理費、駐車場のみ計算し、その他の月額費用は日割せず入居月分を満額で含めています。翌月分を含める場合は「翌月分を初期費用に含める」にチェックしてください。"
     : "";
   const notes = [
     rentRuleNote,
@@ -1288,7 +1294,7 @@ document.addEventListener("change", (event) => {
     renderEstimate();
     return;
   }
-  if (["freeRentStart", "freeRentEnd"].includes(target.id)) {
+  if (["freeRentStart", "freeRentEnd", "includeNextMonth"].includes(target.id)) {
     renderEstimate();
     return;
   }
