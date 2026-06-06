@@ -1148,48 +1148,54 @@ function renderEstimate() {
       <span>お支払概算合計</span>
       <strong>${yen.format(total())}</strong>
     </div>
-    <table>
-      <thead>
-        <tr><th>項目</th><th>区分</th><th>支払時期</th><th class="amount">金額</th></tr>
-      </thead>
-      <tbody>
-        ${rows.map((fee) => `<tr class="${fee.timing === "moveout" ? "moveout-row" : ""} ${fee.timing === "choice" ? "choice-row" : ""}"><td>${escapeHtml(fee.label)}</td><td>${feeKindLabel(fee.type)}</td><td>${timingLabel(fee.timing)}</td><td class="amount">${yen.format(Number(fee.amount || 0))}</td></tr>`).join("")}
-      </tbody>
-    </table>
-    ${monthlyRows.length ? `
-      <section class="summary-box monthly-box">
-        <div class="summary-head">
-          <span>月額費用</span>
-          <strong>${yen.format(monthlySummaryTotal())}</strong>
-        </div>
+    <div class="estimate-body">
+      <section class="main-costs">
         <table>
           <thead>
-            <tr><th>項目</th><th class="amount">月額</th></tr>
+            <tr><th>項目</th><th>区分</th><th>支払時期</th><th class="amount">金額</th></tr>
           </thead>
           <tbody>
-            ${monthlyRows.map((fee) => `<tr><td>${escapeHtml(fee.label)}</td><td class="amount">${yen.format(Number(fee.amount || 0))}</td></tr>`).join("")}
+            ${rows.map((fee) => `<tr class="${fee.timing === "moveout" ? "moveout-row" : ""} ${fee.timing === "choice" ? "choice-row" : ""}"><td>${escapeHtml(fee.label)}</td><td>${feeKindLabel(fee.type)}</td><td>${timingLabel(fee.timing)}</td><td class="amount">${yen.format(Number(fee.amount || 0))}</td></tr>`).join("")}
           </tbody>
         </table>
       </section>
-    ` : ""}
-    ${exitRows.length ? `
-      <section class="summary-box moveout-box">
-        <div class="summary-head">
-          <span>退去時費用</span>
-          <strong>${yen.format(moveoutTotal())}</strong>
+      <aside class="side-costs">
+        ${monthlyRows.length ? `
+          <section class="summary-box monthly-box">
+            <div class="summary-head">
+              <span>月額費用</span>
+              <strong>${yen.format(monthlySummaryTotal())}</strong>
+            </div>
+            <table>
+              <thead>
+                <tr><th>項目</th><th class="amount">月額</th></tr>
+              </thead>
+              <tbody>
+                ${monthlyRows.map((fee) => `<tr><td>${escapeHtml(fee.label)}</td><td class="amount">${yen.format(Number(fee.amount || 0))}</td></tr>`).join("")}
+              </tbody>
+            </table>
+          </section>
+        ` : ""}
+        ${exitRows.length ? `
+          <section class="summary-box moveout-box">
+            <div class="summary-head">
+              <span>退去時費用</span>
+              <strong>${yen.format(moveoutTotal())}</strong>
+            </div>
+            <table>
+              <thead>
+                <tr><th>項目</th><th>区分</th><th class="amount">金額</th></tr>
+              </thead>
+              <tbody>
+                ${exitRows.map((fee) => `<tr><td>${escapeHtml(fee.label)}</td><td>${feeKindLabel(fee.type)}</td><td class="amount">${yen.format(Number(fee.amount || 0))}</td></tr>`).join("")}
+              </tbody>
+            </table>
+          </section>
+        ` : ""}
+        <div class="notes">
+          ${notes.map((note) => `<p>※ ${note}</p>`).join("")}
         </div>
-        <table>
-          <thead>
-            <tr><th>項目</th><th>区分</th><th class="amount">金額</th></tr>
-          </thead>
-          <tbody>
-            ${exitRows.map((fee) => `<tr><td>${escapeHtml(fee.label)}</td><td>${feeKindLabel(fee.type)}</td><td class="amount">${yen.format(Number(fee.amount || 0))}</td></tr>`).join("")}
-          </tbody>
-        </table>
-      </section>
-    ` : ""}
-    <div class="notes">
-      ${notes.map((note) => `<p>※ ${note}</p>`).join("")}
+      </aside>
     </div>
   `;
 }
