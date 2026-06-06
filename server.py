@@ -510,6 +510,17 @@ def should_skip_extra_fee(label: str, context: str) -> bool:
     return False
 
 
+def likely_fee_label(label: str, context: str) -> bool:
+    value = f"{label}{context}"
+    if inferred_extra_fee_category(label, context):
+        return True
+    if re.search(r"料|費|代|金|一時金|負担金|サポート|サービス|クラブ|清掃|消毒|整備|交換", label):
+        return True
+    if re.fullmatch(r"[A-Za-zＡ-Ｚａ-ｚ0-9０-９]{1,10}(?:料|費|代)", label):
+        return True
+    return bool(re.search(r"契約時|退去時|月額|入居時|毎月", value))
+
+
 def extract_unregistered_fees(text: str, fee_rules: dict[str, list[str]]) -> list[dict]:
     known_labels = {label for labels in fee_rules.values() for label in labels}
     known_labels.update(
@@ -529,6 +540,47 @@ def extract_unregistered_fees(text: str, fee_rules: dict[str, list[str]]) -> lis
     search_text = text.replace("\n", "")
     extras: list[dict] = []
     seen: set[tuple[str, int, str]] = set()
+
+    def add_candidate(label: str, context: str, amount: int) -> None:
+        label = re.sub(r"\s+", "", label).strip("・:：、。○※-")
+        label = re.sub(r"(契約時|退去時|月額|入居時|毎月|年額)$", "", label)
+        if not label or not amount:
+            return
+        if any(known in label or label in known for known in known_labels):
+            return
+        if should_skip_extra_fee(label, context) or not likely_fee_label(label, context):
+            return
+        category = inferred_extra_fee_category(label, context)
+        timing = "monthly" if category == "monthlyGuaranteeFee" else infer_fee_timing(context, label)
+        fee_type = "monthly" if timing == "monthly" else "initial"
+        key = (label, amount, timing)
+        if key in seen:
+            return
+        seen.add(key)
+        extras.append(
+            {
+                "id": f"extra-{len(extras) + 1}",
+                "label": label,
+                "amount": amount,
+                "timing": timing,
+                "type": fee_type,
+                "guaranteeTarget": False,
+                "noProrate": timing == "monthly",
+                "noInitialEstimate": category == "monthlyGuaranteeFee",
+            }
+        )
+
+    line_pattern = re.compile(
+        r"^\s*(?:○|※|・|-)?\s*([^：:\d円]{2,32}?(?:料|費|代|金|一時金|負担金|サポート|サービス|クラブ|清掃|消毒|整備|交換)[^：:\d円]{0,12})\s*(契約時|退去時|月額|入居時|毎月|年額)?\s*([\d,，]+)\s*円(.*)$"
+    )
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        match = line_pattern.search(line)
+        if not match:
+            continue
+        context = "".join(value or "" for value in match.groups())
+        add_candidate(match.group(1), context, money_to_int(match.group(3)))
+
     patterns = [
         re.compile(r"(?:^|・|○\s*)([^・：:\n]{2,36}?)[：:]\s*([^・]{0,48}?)([\d,，]+)\s*円([^・]{0,48})"),
         re.compile(r"(?:^|・|○\s*)([^・：:\n]{2,36}?)(?:\s|　)*(契約時|退去時|月額|入居時|毎月)?(?:\s|　)*(?:税込|非課税|課税|または|もしくは|又は|払い可|（税込）|\\(税込\\))*\s*([\d,，]+)\s*円([^・]{0,48})"),
@@ -536,34 +588,8 @@ def extract_unregistered_fees(text: str, fee_rules: dict[str, list[str]]) -> lis
 
     for pattern in patterns:
         for match in pattern.finditer(search_text):
-            label = re.sub(r"\s+", "", match.group(1)).strip("・:：、。")
             context = "".join(value or "" for value in match.groups())
-            amount = money_to_int(match.group(3))
-            if not label or not amount:
-                continue
-            if any(known in label or label in known for known in known_labels):
-                continue
-            category = inferred_extra_fee_category(label, context)
-            if not category or should_skip_extra_fee(label, context):
-                continue
-            timing = "monthly" if category == "monthlyGuaranteeFee" else infer_fee_timing(context, label)
-            fee_type = "monthly" if timing == "monthly" else "initial"
-            key = (label, amount, timing)
-            if key in seen:
-                continue
-            seen.add(key)
-            extras.append(
-                {
-                    "id": f"extra-{len(extras) + 1}",
-                    "label": label,
-                    "amount": amount,
-                    "timing": timing,
-                    "type": fee_type,
-                    "guaranteeTarget": False,
-                    "noProrate": timing == "monthly",
-                    "noInitialEstimate": category == "monthlyGuaranteeFee",
-                }
-            )
+            add_candidate(match.group(1), context, money_to_int(match.group(3)))
     return extras
 
 
