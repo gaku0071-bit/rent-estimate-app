@@ -555,7 +555,7 @@ function applyCsvEnhancement(item) {
     applied.push("エアコン清掃");
   }
 
-  const stoveFee = amountNear(notes, /(?:ストーブ整備料|暖房整備料|暖房分解清掃料|暖房分解清掃料金|冷暖房機器清掃料|冷暖房機器清掃費|FF分解清掃料|FF分解清掃費|FF分解清掃費用|FFストーブ分解清掃料)[^。・\n\r]*?[\d,，]+円/);
+  const stoveFee = amountNear(notes, /(?:ストーブ整備料|暖房整備料|暖房分解清掃料|暖房分解清掃料金|冷暖房機器清掃料|冷暖房機器清掃費|FF分解清掃料|FF分解清掃費|FF分解清掃費用|FF清掃料|FF清掃費|ＦＦ清掃料|ＦＦ清掃費|FFストーブ分解清掃料)[^。・\n\r]*?[\d,，]+円/);
   if (stoveFee) {
     setFeeAmount("stoveMaintenanceFee", stoveFee);
     setFeeLabel("stoveMaintenanceFee", /FF/.test(notes) ? "FF分解清掃料" : "暖房分解清掃料");
@@ -590,7 +590,7 @@ function applyCsvEnhancement(item) {
     applied.push("水落費用");
   }
 
-  const cleaningFee = amountNear(notes, /(?:室内清掃料|室内清掃費|退去時室内清掃料|退去時清掃料|退去時清掃費|退去清掃料|退去清掃費|ハウスクリーニング料?|ルームクリーニング費用|ルームクリーニング料|ルームクリーニング費|ルームクリーニング|るーむくりーにんぐ費用|るーむくりーにんぐ料|るーむくりーにんぐ費|家電清掃料|清掃料)[^。・\n\r]*?[\d,，]+円/);
+  const cleaningFee = amountNear(notes, /(?:室内清掃料|室内清掃費|退去時室内清掃料|退去時清掃料|退去時清掃費|退去清掃料|退去清掃費|ハウスクリーニング料?|HC料|HC費|HC代|ＨＣ料|ＨＣ費|ＨＣ代|ルームクリーニング費用|ルームクリーニング料|ルームクリーニング費|ルームクリーニング|るーむくりーにんぐ費用|るーむくりーにんぐ料|るーむくりーにんぐ費|家電清掃料|清掃料)[^。・\n\r]*?[\d,，]+円/);
   if (cleaningFee) {
     setFeeAmount("cleaningFee", cleaningFee);
     setFeeLabel("cleaningFee", /ルームクリーニング|るーむくりーにんぐ/.test(notes) ? "ルームクリーニング費用" : /クリーニング/.test(notes) ? "ハウスクリーニング" : "清掃料");
