@@ -49,6 +49,7 @@ const state = {
   lastData: null,
   csvRows: [],
   filteredCsvRows: [],
+  unknownFeeCandidates: [],
 };
 
 const storeInfo = {
@@ -81,6 +82,26 @@ const feeDefinitions = [
   ["ペット関連費用", "petFee", "optionalPet", false, "initial"],
   ["エコジョーズ水落費用", "waterDrainFee", "initial", false, "moveout"],
   ["駐車場", "parkingFee", "optionalParking", false, "monthly"],
+];
+
+const USER_RULES_STORAGE_KEY = "rentEstimateUserFeeRules";
+
+const ruleTargets = [
+  ["asExtra", "追加項目のまま保存"],
+  ["cleaningFee", "清掃料系"],
+  ["waterSanitizingFee", "水廻り消毒系"],
+  ["keyFee", "鍵交換系"],
+  ["antibacterialFee", "抗菌・消毒系"],
+  ["supportFee", "24時間・サポート系"],
+  ["acCleaningFee", "エアコン清掃系"],
+  ["stoveMaintenanceFee", "暖房・ストーブ整備系"],
+  ["deodorizingFee", "消臭系"],
+  ["petFee", "ペット系"],
+  ["waterDrainFee", "水落・水抜き系"],
+  ["gasLeaseFee", "水道・リース系"],
+  ["townFee", "町内会費系"],
+  ["monthlyGuaranteeFee", "月額保証・決済手数料系"],
+  ["ignore", "今後は無視する"],
 ];
 
 const yen = new Intl.NumberFormat("ja-JP", {
@@ -138,6 +159,75 @@ function normalizeManualFee(fee) {
   fee.noProrate = true;
   fee.noInitialEstimate = true;
   return true;
+}
+
+function normalizedRuleLabel(label) {
+  return String(label || "").replace(/\s+/g, "").trim();
+}
+
+function readUserFeeRules() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(USER_RULES_STORAGE_KEY) || "[]");
+    return Array.isArray(saved) ? saved.filter((rule) => normalizedRuleLabel(rule.label)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeUserFeeRules(rules) {
+  localStorage.setItem(USER_RULES_STORAGE_KEY, JSON.stringify(rules, null, 2));
+}
+
+function upsertUserFeeRule(rule) {
+  const label = normalizedRuleLabel(rule.label);
+  if (!label) return;
+  const rules = readUserFeeRules().filter((item) => normalizedRuleLabel(item.label) !== label);
+  rules.push({
+    label,
+    targetId: rule.targetId || "asExtra",
+    type: rule.type || "initial",
+    timing: rule.timing || "initial",
+    savedAt: new Date().toISOString(),
+  });
+  writeUserFeeRules(rules);
+}
+
+function findUserFeeRule(label) {
+  const normalized = normalizedRuleLabel(label);
+  return readUserFeeRules().find((rule) => normalizedRuleLabel(rule.label) === normalized);
+}
+
+function targetDefinition(targetId) {
+  return feeDefinitions.find(([, key]) => key === targetId);
+}
+
+function applyUserFeeRuleToExtra(fee) {
+  const rule = findUserFeeRule(fee.label);
+  if (!rule) return { applied: false, fee };
+  if (rule.targetId === "ignore") return { applied: true, ignored: true };
+  const nextFee = {
+    ...fee,
+    timing: rule.timing || fee.timing || "initial",
+    type: rule.type || fee.type || "initial",
+    noProrate: rule.timing === "monthly" || fee.noProrate,
+  };
+  if (rule.targetId && rule.targetId !== "asExtra") {
+    const definition = targetDefinition(rule.targetId);
+    if (definition) {
+      nextFee.id = `${rule.targetId}-${normalizedRuleLabel(fee.label)}`;
+      nextFee.type = rule.type || definition[2];
+      nextFee.timing = rule.timing || definition[4];
+      nextFee.guaranteeTarget = Boolean(definition[3]);
+    }
+  }
+  if (isMonthlyGuaranteeLabel(nextFee.label) || rule.targetId === "monthlyGuaranteeFee") {
+    nextFee.type = "monthly";
+    nextFee.timing = "monthly";
+    nextFee.noProrate = true;
+    nextFee.noInitialEstimate = true;
+    nextFee.guaranteeTarget = false;
+  }
+  return { applied: true, fee: nextFee };
 }
 
 function parseCsvText(text) {
@@ -275,6 +365,7 @@ function addExtraFee(fee) {
     timing: fee.timing || "initial",
     guaranteeTarget: Boolean(fee.guaranteeTarget),
     noProrate: Boolean(fee.noProrate),
+    noInitialEstimate: Boolean(fee.noInitialEstimate),
     derived: false,
   });
   return true;
@@ -617,6 +708,8 @@ function resetToBlank() {
   state.property = {};
   state.settings = {};
   state.fees = [];
+  state.lastData = null;
+  state.unknownFeeCandidates = [];
   document.querySelectorAll("[data-estimate-type]").forEach((button) => {
     button.classList.toggle("active", button.dataset.estimateType === "personal");
   });
@@ -654,6 +747,7 @@ function resetToBlank() {
   el("csvPanel").hidden = true;
   renderGuaranteeTargets();
   renderFeeEditor();
+  renderUnknownRulesPanel();
   renderEstimate();
 }
 
@@ -689,6 +783,7 @@ function loadData(data) {
 
   state.property = property;
   state.settings = settings;
+  state.unknownFeeCandidates = [];
   state.fees = feeDefinitions.map(([label, key, type, guaranteeTarget, timing]) => ({
     id: key,
     label: settings.feeLabels?.[key] || label,
@@ -698,10 +793,18 @@ function loadData(data) {
     guaranteeTarget,
     derived: ["guaranteePersonal", "guaranteeCorporate", "brokerageFee"].includes(key) || (key === "monthlyGuaranteeFee" && settings.monthlyGuaranteeMode === "percent"),
   }));
-  (settings.extraFees || []).forEach((fee) => addExtraFee(fee));
+  (settings.extraFees || []).forEach((fee) => {
+    const result = applyUserFeeRuleToExtra(fee);
+    if (result.ignored) return;
+    if (!result.applied) {
+      state.unknownFeeCandidates.push({ ...fee });
+    }
+    addExtraFee(result.fee);
+  });
   syncDerivedFees();
   renderGuaranteeTargets();
   renderFeeEditor();
+  renderUnknownRulesPanel();
   renderEstimate();
 }
 
@@ -1212,6 +1315,137 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
+function ruleTargetLabel(targetId) {
+  return ruleTargets.find(([id]) => id === targetId)?.[1] || "追加項目";
+}
+
+function ruleTypeFor(targetId, timing) {
+  const definition = targetDefinition(targetId);
+  if (targetId === "monthlyGuaranteeFee" || timing === "monthly") return "monthly";
+  if (definition) return definition[2];
+  return genericFeeType(timing);
+}
+
+function renderUnknownRulesPanel() {
+  const panel = el("unknownRulesPanel");
+  const list = el("unknownRulesList");
+  const summary = el("savedRulesSummary");
+  const candidates = state.unknownFeeCandidates
+    .map((fee, index) => ({ ...fee, originalIndex: index }))
+    .filter((fee) => !findUserFeeRule(fee.label));
+  const savedRules = readUserFeeRules();
+
+  panel.hidden = !candidates.length && !savedRules.length;
+  list.innerHTML = candidates.length
+    ? candidates
+        .map((fee) => {
+          const timing = fee.timing || "initial";
+          return `
+            <div class="unknown-rule-row">
+              <div class="unknown-rule-main">
+                <strong>${escapeHtml(fee.label)}</strong>
+                <span>${yen.format(Number(fee.amount || 0))} / ${timingLabel(timing)}</span>
+              </div>
+              <label>分類
+                <select data-rule-target="${fee.originalIndex}">
+                  ${ruleTargets.map(([id, label]) => `<option value="${id}">${escapeHtml(label)}</option>`).join("")}
+                </select>
+              </label>
+              <label>支払時期
+                <select data-rule-timing="${fee.originalIndex}">
+                  ${timingOptions().map((item) => `<option value="${item}" ${item === timing ? "selected" : ""}>${timingLabel(item)}</option>`).join("")}
+                </select>
+              </label>
+              <div class="unknown-rule-buttons">
+                <button type="button" data-save-rule="${fee.originalIndex}">保存</button>
+                <button type="button" data-ignore-rule="${fee.originalIndex}">無視</button>
+              </div>
+            </div>
+          `;
+        })
+        .join("")
+    : `<p class="section-help">未登録の候補はありません。保存済みルールは書き出して別PCに移せます。</p>`;
+
+  summary.innerHTML = savedRules.length
+    ? `保存済み追加ルール: ${savedRules.length}件 ${savedRules.slice(-5).map((rule) => `<span>${escapeHtml(rule.label)}=${escapeHtml(ruleTargetLabel(rule.targetId))}</span>`).join("")}`
+    : "保存済み追加ルールはありません。";
+}
+
+function saveUnknownRule(index, targetId, timing) {
+  const fee = state.unknownFeeCandidates[index];
+  if (!fee) return;
+  const finalTiming = targetId === "monthlyGuaranteeFee" ? "monthly" : timing;
+  upsertUserFeeRule({
+    label: fee.label,
+    targetId,
+    timing: finalTiming,
+    type: ruleTypeFor(targetId, finalTiming),
+  });
+  if (state.lastData) {
+    loadData(state.lastData);
+  } else {
+    state.unknownFeeCandidates.splice(index, 1);
+    renderUnknownRulesPanel();
+    renderEstimate();
+  }
+  el("status").textContent = `${fee.label} を「${ruleTargetLabel(targetId)}」として保存しました。`;
+}
+
+function ignoreUnknownRule(index) {
+  const fee = state.unknownFeeCandidates[index];
+  if (!fee) return;
+  upsertUserFeeRule({ label: fee.label, targetId: "ignore", timing: "initial", type: "initial" });
+  if (state.lastData) {
+    loadData(state.lastData);
+  } else {
+    state.unknownFeeCandidates.splice(index, 1);
+    renderUnknownRulesPanel();
+    renderEstimate();
+  }
+  el("status").textContent = `${fee.label} は今後読み込まない項目として保存しました。`;
+}
+
+function exportUserRules() {
+  const rules = readUserFeeRules();
+  const blob = new Blob([JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), rules }, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "追加ルール.json";
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  el("status").textContent = `追加ルール ${rules.length}件を書き出しました。`;
+}
+
+async function importUserRules(file) {
+  const text = await readFileText(file);
+  const data = JSON.parse(text);
+  const incoming = Array.isArray(data) ? data : data.rules;
+  if (!Array.isArray(incoming)) throw new Error("追加ルールJSONを読み取れませんでした。");
+  const existing = readUserFeeRules();
+  const merged = [...existing];
+  incoming.forEach((rule) => {
+    const label = normalizedRuleLabel(rule.label);
+    if (!label) return;
+    const index = merged.findIndex((item) => normalizedRuleLabel(item.label) === label);
+    const next = {
+      label,
+      targetId: rule.targetId || "asExtra",
+      type: rule.type || ruleTypeFor(rule.targetId || "asExtra", rule.timing || "initial"),
+      timing: rule.timing || "initial",
+      savedAt: rule.savedAt || new Date().toISOString(),
+    };
+    if (index >= 0) merged[index] = next;
+    else merged.push(next);
+  });
+  writeUserFeeRules(merged);
+  if (state.lastData) loadData(state.lastData);
+  else renderUnknownRulesPanel();
+  el("status").textContent = `追加ルールを読み込みました。保存済み ${merged.length}件です。`;
+}
+
 async function parsePdf(file) {
   const form = new FormData();
   form.append("pdf", file);
@@ -1289,6 +1523,16 @@ document.addEventListener("change", (event) => {
     renderCsvPreview();
     return;
   }
+  if (target.id === "importRulesInput" && target.files[0]) {
+    importUserRules(target.files[0]).catch((error) => {
+      el("status").textContent = error.message;
+    });
+    target.value = "";
+    return;
+  }
+  if (target.dataset?.ruleTarget || target.dataset?.ruleTiming) {
+    return;
+  }
   if (target.dataset?.guaranteeTarget) {
     const fee = state.fees.find((item) => item.id === target.dataset.guaranteeTarget);
     if (fee) {
@@ -1329,6 +1573,17 @@ document.addEventListener("change", (event) => {
 
 document.addEventListener("click", (event) => {
   const target = event.target;
+  if (target.dataset?.saveRule) {
+    const index = Number(target.dataset.saveRule);
+    const targetId = document.querySelector(`[data-rule-target="${index}"]`)?.value || "asExtra";
+    const timing = document.querySelector(`[data-rule-timing="${index}"]`)?.value || "initial";
+    saveUnknownRule(index, targetId, timing);
+    return;
+  }
+  if (target.dataset?.ignoreRule) {
+    ignoreUnknownRule(Number(target.dataset.ignoreRule));
+    return;
+  }
   if (target.dataset?.estimateType) {
     state.estimateType = target.dataset.estimateType;
     document.querySelectorAll("[data-estimate-type]").forEach((button) => {
@@ -1376,6 +1631,8 @@ el("applyCsvButton").addEventListener("click", () => {
   const applied = applyCsvEnhancement(item);
   el("status").textContent = `${item["物件"] || "選択した物件"} ${item["号室"] || ""} のCSV備考で補強しました。${applied.length ? `反映: ${applied.join("、")}` : "反映できる費用項目は見つかりませんでした。"}`;
 });
+
+el("exportRulesButton").addEventListener("click", exportUserRules);
 
 el("printButton").addEventListener("click", () => window.print());
 

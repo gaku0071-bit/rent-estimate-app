@@ -131,6 +131,86 @@ button:hover,
   margin-bottom: 14px;
 }
 
+.section-help {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.rule-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.small-upload {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.rules-panel {
+  border-color: #c9d8d6;
+}
+
+.unknown-rules-list {
+  display: grid;
+  gap: 10px;
+}
+
+.unknown-rule-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(150px, 0.8fr) minmax(120px, 0.6fr) auto;
+  gap: 10px;
+  align-items: end;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.unknown-rule-main {
+  display: grid;
+  gap: 4px;
+}
+
+.unknown-rule-main strong {
+  font-size: 14px;
+}
+
+.unknown-rule-main span,
+.saved-rules-summary {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.unknown-rule-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.unknown-rule-buttons button {
+  min-height: 34px;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.saved-rules-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.saved-rules-summary span {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: var(--soft);
+}
+
 .segment {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -595,6 +675,10 @@ th.amount {
   }
 
   .csv-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .unknown-rule-row {
     grid-template-columns: 1fr;
   }
 

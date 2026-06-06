@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b6b6f" />
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=20260606-1" />
+    <link rel="stylesheet" href="styles.css?v=20260606-2" />
   </head>
   <body>
     <main class="app">
@@ -105,6 +105,24 @@
             <button id="addFeeButton" class="plain" type="button">項目を追加</button>
           </div>
         </section>
+
+        <section id="unknownRulesPanel" class="panel rules-panel" hidden>
+          <div class="section-title">
+            <div>
+              <h2>未登録項目の確認</h2>
+              <p class="section-help">PDFから拾った未登録の費用項目です。分類を保存すると、このブラウザでは次回から同じ扱いになります。</p>
+            </div>
+            <div class="rule-actions">
+              <button id="exportRulesButton" type="button">追加ルールを書き出し</button>
+              <label class="upload small-upload">
+                <input id="importRulesInput" type="file" accept="application/json,.json" />
+                追加ルールを読み込み
+              </label>
+            </div>
+          </div>
+          <div id="unknownRulesList" class="unknown-rules-list"></div>
+          <div id="savedRulesSummary" class="saved-rules-summary"></div>
+        </section>
       </section>
 
       <aside class="preview-wrap">
@@ -112,6 +130,6 @@
       </aside>
     </main>
 
-    <script src="app.js?v=20260606-1"></script>
+    <script src="app.js?v=20260606-2"></script>
   </body>
 </html>
