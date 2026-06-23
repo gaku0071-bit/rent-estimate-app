@@ -24,6 +24,27 @@ function guaranteeMinimumAmount(text) {
   );
 }
 
+function initialGuaranteeRate(text) {
+  const value = normalizeRateText(text);
+  return Number(
+    value.match(/(?:初回保証料|初回保証委託料|保証委託料|初回)[^%\d]{0,80}(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] ||
+      value.match(/(?:賃料合計|月額賃料|月額家賃|賃料等|家賃等)[^%\d]{0,30}(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] ||
+      0,
+  );
+}
+
+function normalizeGuaranteeSettings(settings) {
+  const note = settings?.guaranteeNote || "";
+  const rate = initialGuaranteeRate(note);
+  if (!rate) return settings;
+  return {
+    ...settings,
+    guaranteeMode: "percent",
+    guaranteeRate: rate,
+    guaranteeMinimum: guaranteeMinimumAmount(note) || Number(settings.guaranteeMinimum || 0),
+  };
+}
+
 function fixedGuaranteeAmount(text) {
   const value = String(text || "");
   const patterns = [
