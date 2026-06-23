@@ -336,12 +336,21 @@ function fixedGuaranteeAmount(text) {
   for (const pattern of patterns) {
     for (const match of value.matchAll(pattern)) {
       const chunk = value.slice(Math.max(0, match.index - 4), match.index + match[0].length);
+      if (/最低|下限/.test(chunk) || /%|パーセント/.test(chunk)) continue;
       if (/月額|月次|毎月|更新|年間/.test(chunk) && !/初回|新規契約時/.test(chunk)) continue;
       const amount = moneyToInt(match[0]);
       if (amount) return amount;
     }
   }
   return 0;
+}
+
+function guaranteeMinimumAmount(text) {
+  const value = String(text || "");
+  return amountNear(
+    value,
+    /(?:初回保証料|初回保証委託料|保証委託料|初回)[^。・\n\r]{0,100}?(?:最低|下限)[^。・\n\r]{0,30}?[\d,，]+円/,
+  );
 }
 
 function nonCustomerFeeLabel(label) {
@@ -686,6 +695,7 @@ function applyCsvEnhancement(item) {
     if (initialRate) {
       state.settings.guaranteeMode = "percent";
       state.settings.guaranteeRate = initialRate;
+      state.settings.guaranteeMinimum = guaranteeMinimumAmount(notes);
       el("guaranteeRate").value = initialRate;
       applied.push(`初回保証料${initialRate}%`);
     }
@@ -961,7 +971,8 @@ function guaranteeAmount() {
     const guaranteeFee = state.fees.find((fee) => fee.id === "guaranteePersonal");
     return Number(guaranteeFee?.amount || 0);
   }
-  return Math.round(guaranteeBaseTotal() * (numberValue("guaranteeRate") / 100));
+  const calculated = Math.round(guaranteeBaseTotal() * (numberValue("guaranteeRate") / 100));
+  return Math.max(calculated, Number(state.settings?.guaranteeMinimum || 0));
 }
 
 function syncGuaranteeFee() {
@@ -1253,7 +1264,9 @@ function renderGuaranteeTargets() {
   wrap.innerHTML = `
     ${corporateMessage ? `<div class="timing-notice corporate-guarantee-notice">${escapeHtml(corporateMessage)}</div>` : ""}
     <div class="target-summary">
-      <span>${state.settings?.guaranteeMode === "fixed" ? "固定額で読込" : `対象合計 ${yen.format(guaranteeBaseTotal())}`}</span>
+      <span>${state.settings?.guaranteeMode === "fixed"
+        ? "固定額で読込"
+        : `対象合計 ${yen.format(guaranteeBaseTotal())}${Number(state.settings?.guaranteeMinimum || 0) ? ` / 最低 ${yen.format(Number(state.settings.guaranteeMinimum))}` : ""}`}</span>
       <strong>初回保証料 ${yen.format(guaranteeAmount())}</strong>
     </div>
     ${candidates.map((fee) => `
