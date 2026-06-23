@@ -50,6 +50,7 @@ const state = {
   csvRows: [],
   filteredCsvRows: [],
   unknownFeeCandidates: [],
+  receivedTransferIds: new Set(),
 };
 
 const storeInfo = {
@@ -811,7 +812,7 @@ function loadData(data) {
   el("recipientName").value = "お客様";
   el("prorateDays").value = 0;
   el("monthDays").value = 30;
-  el("guaranteeRate").value = 50;
+  el("guaranteeRate").value = Number(settings.guaranteeRate || 50);
   el("propertyTitle").value = property.title || "";
   el("room").value = property.room || "";
   el("address").value = property.address || "";
@@ -856,6 +857,37 @@ function loadData(data) {
   renderFeeEditor();
   renderUnknownRulesPanel();
   renderEstimate();
+}
+
+function validExtensionPayload(data) {
+  if (!data || data.source !== "realpro-extension" || data.version !== 1) return false;
+  if (!data.property || !data.amounts || !data.settings) return false;
+  return typeof data.property.title === "string" && Number.isFinite(Number(data.amounts.rent || 0));
+}
+
+function receiveExtensionData(event) {
+  if (event.source !== window || event.origin !== window.location.origin) return;
+  if (event.data?.type !== "RENT_ESTIMATE_EXTENSION_DATA") return;
+
+  const transferId = String(event.data.transferId || "");
+  if (transferId && state.receivedTransferIds.has(transferId)) {
+    window.postMessage({ type: "RENT_ESTIMATE_EXTENSION_ACK", transferId }, window.location.origin);
+    return;
+  }
+
+  const payload = event.data.payload;
+  if (!validExtensionPayload(payload)) {
+    el("status").textContent = "リアプロから受信したデータ形式が正しくありません。拡張機能を更新してください。";
+    return;
+  }
+
+  if (transferId) state.receivedTransferIds.add(transferId);
+  loadData(payload);
+  const warnings = payload.settings?.extractionDiagnostics?.warnings || [];
+  el("status").textContent = warnings.length
+    ? `リアプロから物件情報を読み込みました。確認事項: ${warnings.join("、")}`
+    : "リアプロから物件情報と費用を読み込みました。金額と支払時期を確認してください。";
+  window.postMessage({ type: "RENT_ESTIMATE_EXTENSION_ACK", transferId }, window.location.origin);
 }
 
 function applicableFee(fee) {
@@ -1501,7 +1533,16 @@ async function parsePdf(file) {
   form.append("pdf", file);
   el("status").textContent = "PDFを解析しています。";
   const response = await fetch("/api/parse-pdf", { method: "POST", body: form });
-  if (!response.ok) throw new Error("PDF解析に失敗しました。");
+  if (!response.ok) {
+    let message = "PDF解析に失敗しました。";
+    try {
+      const errorData = await response.json();
+      if (errorData?.error) message = errorData.error;
+    } catch {
+      // Keep the default message when the server did not return JSON.
+    }
+    throw new Error(message);
+  }
   const data = await response.json();
   loadData(data);
   const csvResult = enhanceFromCsvMatch();
@@ -1686,7 +1727,10 @@ el("exportRulesButton").addEventListener("click", exportUserRules);
 
 el("printButton").addEventListener("click", () => window.print());
 
+window.addEventListener("message", receiveExtensionData);
+
 resetToBlank();
+window.postMessage({ type: "RENT_ESTIMATE_APP_READY" }, window.location.origin);
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
   navigator.serviceWorker.register("service-worker.js").catch(() => {});
