@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "publishedAt": "2026-07-05T02:24:25.622Z",
+  "windows": {
+    "version": "2026.07.05.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.05.1.exe",
+    "sha256": "baabb64cc7347efaffccddb1b3ea111f07f1d1f093e1ca57f15f550ccdb820c8",
+    "packageType": "exe",
+    "fileName": "property-list-automation-windows-2026.07.05.1.exe",
+    "required": false,
+    "notes": [
+      "Windows版インストーラー更新"
+    ]
+  },
+  "mac": {
+    "version": "2026.07.05.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-mac-2026.07.05.1.zip",
+    "sha256": "87a1fed5d81585d4dae8f14f939c92f7bf4e4f87bd7f5d677255708d66f96b0a",
+    "packageType": "zip",
+    "fileName": "property-list-automation-mac-2026.07.05.1.zip",
+    "required": false,
+    "notes": [
+      "Mac版更新ZIP"
+    ]
+  }
+}
