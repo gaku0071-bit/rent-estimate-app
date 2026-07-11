@@ -125,6 +125,48 @@ button:hover,
   margin-bottom: 16px;
 }
 
+.review-panel {
+  width: min(100%, 820px);
+  margin-left: auto;
+}
+
+.guarantee-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.guarantee-settings-grid label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.guarantee-settings-grid input,
+.guarantee-settings-grid select {
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--ink);
+  background: #fff;
+}
+
+.guarantee-note,
+.optional-monthly-note {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  background: #f1f8f8;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .section-title {
   justify-content: space-between;
   gap: 12px;
@@ -387,6 +429,12 @@ select:focus {
   margin-bottom: 0;
 }
 
+.two-col > .panel:last-child {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+}
+
 .fee-editor {
   display: grid;
   gap: 8px;
@@ -406,9 +454,19 @@ select:focus {
 
 .fee-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1.2fr) 88px 94px 84px 34px;
+  grid-template-columns: minmax(120px, 1.2fr) 88px 94px 84px minmax(90px, auto) 34px;
   gap: 8px;
   align-items: end;
+}
+
+.optional-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .fee-row input,
@@ -706,6 +764,28 @@ th.amount {
   .section-title {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .review-panel {
+    width: 100%;
+  }
+
+  .two-col > .panel:last-child {
+    position: static;
+  }
+
+  .guarantee-settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fee-row {
+    grid-template-columns: minmax(120px, 1fr) 88px;
+  }
+
+  .fee-row select,
+  .fee-row .optional-check,
+  .fee-row button {
+    grid-column: span 1;
   }
 
   .form-grid {

@@ -89,6 +89,7 @@ const USER_RULES_STORAGE_KEY = "rentEstimateUserFeeRules";
 
 const ruleTargets = [
   ["asExtra", "追加項目のまま保存"],
+  ["optionalMonthly", "月額費用（任意）"],
   ["cleaningFee", "清掃料系"],
   ["waterSanitizingFee", "水廻り消毒系"],
   ["keyFee", "鍵交換系"],
@@ -329,6 +330,7 @@ function applyUserFeeRuleToExtra(fee) {
     timing: rule.timing || fee.timing || "initial",
     type: rule.type || fee.type || "initial",
     noProrate: rule.timing === "monthly" || fee.noProrate,
+    includeInEstimate: fee.includeInEstimate !== false,
   };
   if (rule.targetId && rule.targetId !== "asExtra") {
     const definition = targetDefinition(rule.targetId);
@@ -345,6 +347,16 @@ function applyUserFeeRuleToExtra(fee) {
     nextFee.noProrate = true;
     nextFee.noInitialEstimate = true;
     nextFee.guaranteeTarget = false;
+  }
+  if (rule.targetId === "optionalMonthly") {
+    nextFee.type = "optionalMonthly";
+    nextFee.timing = "monthly";
+    nextFee.noProrate = true;
+    nextFee.includeInEstimate = false;
+  }
+  if (rule.targetId === "petFee") {
+    nextFee.type = "optionalPet";
+    nextFee.includeInEstimate = false;
   }
   return { applied: true, fee: nextFee };
 }
@@ -563,8 +575,10 @@ function normalizeGuaranteeSettings(settings) {
     guaranteeMode: terms.fixed ? "fixed" : "percent",
     guaranteeRate: terms.fixed ? 0 : terms.initialRate || Number(settings.guaranteeRate || 50),
     guaranteeMinimum: terms.initialMinimum || Number(settings.guaranteeMinimum || 0),
+    guaranteeFixedAmount: terms.fixed || Number(settings.guaranteeFixedAmount || 0),
     monthlyGuaranteeMode: terms.monthlyRate ? "percent" : terms.monthlyFixed ? "fixed" : settings.monthlyGuaranteeMode,
     monthlyGuaranteeRate: terms.monthlyRate || Number(settings.monthlyGuaranteeRate || 0),
+    monthlyGuaranteeFixed: terms.monthlyFixed || Number(settings.monthlyGuaranteeFixed || 0),
     monthlyGuaranteeFixedExtra: terms.monthlyFixedExtra || Number(settings.monthlyGuaranteeFixedExtra || 0),
   };
 }
@@ -592,6 +606,7 @@ function addExtraFee(fee) {
     guaranteeTarget: Boolean(fee.guaranteeTarget),
     noProrate: Boolean(fee.noProrate),
     noInitialEstimate: Boolean(fee.noInitialEstimate),
+    includeInEstimate: fee.includeInEstimate !== false,
     derived: false,
   });
   return true;
@@ -796,6 +811,7 @@ function applyCsvItem(item) {
   el("includePetFee").checked = false;
 
   syncDerivedFees();
+  syncGuaranteeSettingsInputs();
   renderGuaranteeTargets();
   updateGuaranteeFeeInput();
   renderFeeEditor();
@@ -902,6 +918,7 @@ function applyCsvEnhancement(item) {
   const fixedGuarantee = guaranteeTerms.fixed;
   if (fixedGuarantee) {
     state.settings.guaranteeMode = "fixed";
+    state.settings.guaranteeFixedAmount = fixedGuarantee;
     state.settings.guaranteeRate = 0;
     state.settings.guaranteeMinimum = 0;
     setFeeAmount("guaranteePersonal", fixedGuarantee);
@@ -930,6 +947,7 @@ function applyCsvEnhancement(item) {
     applied.push("月額保証料");
   } else if (monthlyFixed) {
     state.settings.monthlyGuaranteeMode = "fixed";
+    state.settings.monthlyGuaranteeFixed = monthlyFixed;
     state.settings.monthlyGuaranteeFixedExtra = 0;
     setFeeAmount("monthlyGuaranteeFee", monthlyFixed);
     setFeeLabel("monthlyGuaranteeFee", /収納代行/.test(notes) ? "収納代行手数料" : /支払/.test(notes) ? "支払手数料" : /口/.test(notes) ? "口座振替料" : "月額保証料");
@@ -1005,6 +1023,12 @@ function resetToBlank() {
   el("prorateDays").value = 0;
   el("monthDays").value = 30;
   el("guaranteeRate").value = 50;
+  el("guaranteeMode").value = "percent";
+  el("guaranteeFixedAmount").value = 0;
+  el("guaranteeMinimum").value = 0;
+  el("monthlyGuaranteeMode").value = "none";
+  el("monthlyGuaranteeFixed").value = 0;
+  el("monthlyGuaranteeRate").value = 0;
   el("includeParking").checked = false;
   el("includeNextMonth").checked = false;
   el("includeAcCleaning").checked = false;
@@ -1057,6 +1081,7 @@ function loadData(data) {
 
   state.property = property;
   state.settings = settings;
+  syncGuaranteeSettingsInputs();
   state.unknownFeeCandidates = [];
   state.fees = feeDefinitions.map(([label, key, type, guaranteeTarget, timing]) => ({
     id: key,
@@ -1065,6 +1090,7 @@ function loadData(data) {
     type: settings.feeTypes?.[key] || type,
     timing: settings.feeTimings?.[key] || timing,
     guaranteeTarget,
+    includeInEstimate: key === "petFee" || key === "deodorizingFee" ? false : true,
     derived: ["guaranteePersonal", "guaranteeCorporate", "brokerageFee"].includes(key) || (key === "monthlyGuaranteeFee" && settings.monthlyGuaranteeMode === "percent"),
   }));
   applyInsurancePaymentMode(
@@ -1120,6 +1146,7 @@ function receiveExtensionData(event) {
 }
 
 function applicableFee(fee) {
+  if (fee.includeInEstimate === false) return false;
   if (isPetRelatedFee(fee)) return el("includePetFee").checked;
   if (fee.type === "personal") return state.estimateType === "personal";
   if (fee.type === "corporate") return state.estimateType === "corporate" && (fee.id !== "guaranteeCorporate" || el("includeCorporateGuarantee").checked);
@@ -1141,6 +1168,7 @@ function feeKindLabel(type) {
     optionalParking: "月額",
     optionalAc: "任意",
     optionalPet: "任意",
+    optionalMonthly: "月額（任意）",
     discount: "控除",
   }[type] || "契約時";
 }
@@ -1180,7 +1208,7 @@ function corporateGuaranteeMessage() {
 }
 
 function guaranteeCandidate(fee) {
-  return fee.id !== "monthlyGuaranteeFee" && ["monthly", "optionalParking"].includes(fee.type);
+  return fee.id !== "monthlyGuaranteeFee" && ["monthly", "optionalParking", "optionalMonthly"].includes(fee.type);
 }
 
 function guaranteeBaseRows() {
@@ -1192,9 +1220,9 @@ function guaranteeBaseTotal() {
 }
 
 function guaranteeAmount() {
+  if (state.settings?.guaranteeMode === "none") return 0;
   if (state.settings?.guaranteeMode === "fixed") {
-    const guaranteeFee = state.fees.find((fee) => fee.id === "guaranteePersonal");
-    return Number(guaranteeFee?.amount || 0);
+    return Number(state.settings?.guaranteeFixedAmount || 0);
   }
   const calculated = Math.round(guaranteeBaseTotal() * (numberValue("guaranteeRate") / 100));
   return Math.max(calculated, Number(state.settings?.guaranteeMinimum || 0));
@@ -1217,13 +1245,51 @@ function syncBrokerageFee() {
 }
 
 function syncMonthlyGuaranteeFee() {
-  if (state.settings?.monthlyGuaranteeMode !== "percent") return;
   const monthlyGuaranteeFee = state.fees.find((fee) => fee.id === "monthlyGuaranteeFee");
+  if (!monthlyGuaranteeFee) return;
+  if (state.settings?.monthlyGuaranteeMode === "none") {
+    monthlyGuaranteeFee.amount = 0;
+    return;
+  }
+  if (state.settings?.monthlyGuaranteeMode === "fixed") {
+    monthlyGuaranteeFee.amount = Number(state.settings?.monthlyGuaranteeFixed || 0);
+    return;
+  }
   const rate = Number(state.settings?.monthlyGuaranteeRate || 0);
   const fixedExtra = Number(state.settings?.monthlyGuaranteeFixedExtra || 0);
   if (monthlyGuaranteeFee && rate) {
     monthlyGuaranteeFee.amount = Math.round(guaranteeBaseTotal() * (rate / 100)) + fixedExtra;
   }
+}
+
+function syncGuaranteeSettingsInputs() {
+  const settings = state.settings || {};
+  const values = {
+    guaranteeMode: settings.guaranteeMode || "percent",
+    guaranteeFixedAmount: Number(settings.guaranteeFixedAmount || 0),
+    guaranteeRate: Number(settings.guaranteeRate || 50),
+    guaranteeMinimum: Number(settings.guaranteeMinimum || 0),
+    monthlyGuaranteeMode: settings.monthlyGuaranteeMode || "none",
+    monthlyGuaranteeFixed: Number(settings.monthlyGuaranteeFixed || 0),
+    monthlyGuaranteeRate: Number(settings.monthlyGuaranteeRate || 0),
+  };
+  Object.entries(values).forEach(([id, value]) => {
+    const input = el(id);
+    if (input) input.value = value;
+  });
+}
+
+function applyGuaranteeSettingsInputs() {
+  state.settings = {
+    ...(state.settings || {}),
+    guaranteeMode: el("guaranteeMode")?.value || "percent",
+    guaranteeFixedAmount: numberValue("guaranteeFixedAmount"),
+    guaranteeRate: numberValue("guaranteeRate"),
+    guaranteeMinimum: numberValue("guaranteeMinimum"),
+    monthlyGuaranteeMode: el("monthlyGuaranteeMode")?.value || "none",
+    monthlyGuaranteeFixed: numberValue("monthlyGuaranteeFixed"),
+    monthlyGuaranteeRate: numberValue("monthlyGuaranteeRate"),
+  };
 }
 
 function syncDerivedFees() {
@@ -1299,7 +1365,7 @@ function skipProration(fee) {
 }
 
 function estimateMonthlyChargeFee(fee) {
-  return ["monthly", "optionalParking"].includes(fee.type) && fee.id !== "monthlyGuaranteeFee" && !fee.noInitialEstimate;
+  return ["monthly", "optionalParking", "optionalMonthly"].includes(fee.type) && fee.id !== "monthlyGuaranteeFee" && !fee.noInitialEstimate;
 }
 
 function proratedRows() {
@@ -1440,7 +1506,16 @@ function total() {
 }
 
 function monthlySummaryRows() {
-  return state.fees.filter((fee) => ["monthly", "optionalParking"].includes(fee.type) && applicableFee(fee) && Number(fee.amount || 0) !== 0);
+  return state.fees.filter((fee) => ["monthly", "optionalParking", "optionalMonthly"].includes(fee.type) && applicableFee(fee) && Number(fee.amount || 0) !== 0);
+}
+
+function optionalMonthlyRows() {
+  return state.fees.filter((fee) =>
+    ["optionalMonthly", "optionalPet"].includes(fee.type) &&
+    fee.timing === "monthly" &&
+    fee.includeInEstimate === false &&
+    Number(fee.amount || 0) !== 0,
+  );
 }
 
 function monthlySummaryTotal() {
@@ -1559,11 +1634,12 @@ function renderFeeEditor() {
       <input aria-label="項目名" value="${escapeHtml(fee.label)}" data-field="label" data-index="${index}">
       <input aria-label="金額" type="number" value="${fee.amount}" data-field="amount" data-index="${index}" ${fee.derived ? "readonly" : ""}>
       <select aria-label="区分" data-field="type" data-index="${index}">
-        ${["initial", "monthly", "personal", "corporate", "optionalParking", "optionalAc", "optionalPet"].map((type) => `<option value="${type}" ${fee.type === type ? "selected" : ""}>${feeKindLabel(type)}</option>`).join("")}
+        ${["initial", "monthly", "personal", "corporate", "optionalParking", "optionalMonthly", "optionalAc", "optionalPet"].map((type) => `<option value="${type}" ${fee.type === type ? "selected" : ""}>${feeKindLabel(type)}</option>`).join("")}
       </select>
       <select aria-label="支払時期" data-field="timing" data-index="${index}">
         ${timingOptions().map((timing) => `<option value="${timing}" ${fee.timing === timing ? "selected" : ""}>${timingLabel(timing)}</option>`).join("")}
       </select>
+      ${["optionalMonthly", "optionalPet", "optionalParking", "optionalAc"].includes(fee.type) ? `<label class="optional-check"><input type="checkbox" data-optional-include="${index}" ${fee.includeInEstimate !== false ? "checked" : ""}>見積に反映</label>` : "<span></span>"}
       <button type="button" aria-label="削除" data-remove="${index}">×</button>
     `;
     wrap.appendChild(row);
@@ -1597,6 +1673,7 @@ function renderEstimate() {
   const kind = state.estimateType === "personal" ? "個人宛" : "法人宛";
   const rows = estimateRows();
   const monthlyRows = monthlySummaryRows();
+  const optionalRows = optionalMonthlyRows();
   const exitRows = moveoutRows();
   const estimateEl = el("estimate");
   const property = {
@@ -1630,6 +1707,7 @@ function renderEstimate() {
     freeRange ? "フリーレント期間に重なる賃料と共益費・管理費を控除しています。" : "",
     choiceFees.length ? `支払時期の選択が必要な項目があります（${escapeHtml(choiceFees.map((fee) => fee.label).join("、"))}）。要選択の項目は契約時候補として合計に含めています。退去時払いにする場合は、費用項目欄で支払時期を退去時に変更してください。` : "",
     corporateGuaranteeMessage(),
+    optionalRows.length ? `任意の月額費用（${escapeHtml(optionalRows.map((fee) => fee.label).join("、"))}）は見積に反映していません。利用する場合は別途かかります。` : "",
     el("includeFreeRentNote").checked && freeRent ? `<strong>${escapeHtml(freeRent)}</strong>` : "",
     "本見積はPDF記載内容をもとにした概算です。申込条件、入居日、管理会社確認により金額が変動する場合があります。",
     guaranteeNote ? `保証会社条件: ${escapeHtml(guaranteeNote)}` : "",
@@ -1678,7 +1756,7 @@ function renderEstimate() {
         </table>
       </section>
       <aside class="side-costs">
-        ${monthlyRows.length ? `
+        ${monthlyRows.length || optionalRows.length ? `
           <section class="summary-box monthly-box">
             <div class="summary-head">
               <span>月額費用</span>
@@ -1692,6 +1770,7 @@ function renderEstimate() {
                 ${monthlyRows.map((fee) => `<tr><td>${escapeHtml(fee.label)}</td><td class="amount">${yen.format(Number(fee.amount || 0))}</td></tr>`).join("")}
               </tbody>
             </table>
+            ${optionalRows.length ? `<div class="optional-monthly-note">任意項目（未反映）<br>${optionalRows.map((fee) => `${escapeHtml(fee.label)} ${yen.format(Number(fee.amount || 0))}：利用する場合は別途かかります`).join("<br>")}</div>` : ""}
           </section>
         ` : ""}
         ${exitRows.length ? `
@@ -1736,6 +1815,8 @@ function ruleTargetLabel(targetId) {
 }
 
 function ruleTypeFor(targetId, timing) {
+  if (targetId === "optionalMonthly") return "optionalMonthly";
+  if (targetId === "petFee") return "optionalPet";
   const definition = targetDefinition(targetId);
   if (targetId === "monthlyGuaranteeFee" || timing === "monthly") return "monthly";
   if (definition) return definition[2];
@@ -1998,9 +2079,44 @@ document.addEventListener("change", (event) => {
     el("status").textContent = corporateGuaranteeMessage();
     return;
   }
+  if (target.id === "includePetFee") {
+    state.fees.filter((fee) => isPetRelatedFee(fee)).forEach((fee) => {
+      fee.includeInEstimate = target.checked;
+    });
+    renderFeeEditor();
+    renderEstimate();
+    return;
+  }
+  if (target.dataset?.optionalInclude) {
+    const fee = state.fees[Number(target.dataset.optionalInclude)];
+    if (fee) {
+      fee.includeInEstimate = target.checked;
+      if (isPetRelatedFee(fee)) el("includePetFee").checked = target.checked;
+      renderGuaranteeTargets();
+      renderEstimate();
+    }
+    return;
+  }
+  if (["guaranteeMode", "guaranteeFixedAmount", "guaranteeRate", "guaranteeMinimum", "monthlyGuaranteeMode", "monthlyGuaranteeFixed", "monthlyGuaranteeRate"].includes(target.id)) {
+    applyGuaranteeSettingsInputs();
+    syncDerivedFees();
+    syncGuaranteeSettingsInputs();
+    renderGuaranteeTargets();
+    updateGuaranteeFeeInput();
+    renderEstimate();
+    return;
+  }
   if (target.dataset?.field) {
     const fee = state.fees[Number(target.dataset.index)];
     fee[target.dataset.field] = target.value;
+    const typeChanged = target.dataset.field === "type";
+    if (target.dataset.field === "type" && ["optionalMonthly", "optionalPet", "optionalParking", "optionalAc"].includes(target.value)) {
+      fee.includeInEstimate = false;
+      if (target.value === "optionalMonthly") {
+        fee.timing = "monthly";
+        fee.noProrate = true;
+      }
+    }
     if (target.dataset.field === "label") normalizeManualFee(fee);
     if (fee.id === "insuranceFee" && ["type", "timing"].includes(target.dataset.field)) {
       applyInsurancePaymentMode(insurancePaymentModeFromFee(), { updateLabel: false });
@@ -2009,6 +2125,7 @@ document.addEventListener("change", (event) => {
     syncDerivedFees();
     renderGuaranteeTargets();
     updateGuaranteeFeeInput();
+    if (typeChanged) renderFeeEditor();
   }
   renderEstimate();
 });

@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b6b6f" />
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=20260712-1" />
+    <link rel="stylesheet" href="styles.css?v=20260712-2" />
   </head>
   <body>
     <main class="app">
@@ -46,7 +46,7 @@
           <div id="csvPreview" class="csv-preview"></div>
         </section>
 
-        <section class="panel">
+        <section class="panel review-panel">
           <div class="section-title">
             <h2>見積設定</h2>
             <div class="segment" role="tablist" aria-label="宛先区分">
@@ -83,9 +83,33 @@
 
         <section class="panel">
           <div class="section-title">
-            <h2>初回保証料</h2>
-            <label class="rate-field">料率<input id="guaranteeRate" type="number" min="0" step="0.1" value="50" /></label>
+            <div>
+              <h2>保証会社費用の確認</h2>
+              <p class="section-help">読み取り内容を確認・修正できます。月額保証料は初期費用に含まれません。</p>
+            </div>
           </div>
+          <div class="guarantee-settings-grid">
+            <label>初回保証料の方式
+              <select id="guaranteeMode">
+                <option value="percent">料率</option>
+                <option value="fixed">定額</option>
+                <option value="none">なし</option>
+              </select>
+            </label>
+            <label>初回保証料（定額）<input id="guaranteeFixedAmount" type="number" min="0" step="1" value="0" /></label>
+            <label>初回保証料（料率）<input id="guaranteeRate" type="number" min="0" step="0.1" value="50" /></label>
+            <label>最低保証料<input id="guaranteeMinimum" type="number" min="0" step="1" value="0" /></label>
+            <label>月額保証料の方式
+              <select id="monthlyGuaranteeMode">
+                <option value="percent">料率</option>
+                <option value="fixed">定額</option>
+                <option value="none">なし</option>
+              </select>
+            </label>
+            <label>月額保証料（定額）<input id="monthlyGuaranteeFixed" type="number" min="0" step="1" value="0" /></label>
+            <label>月額保証料（料率）<input id="monthlyGuaranteeRate" type="number" min="0" step="0.1" value="0" /></label>
+          </div>
+          <div class="guarantee-note">月額保証料は初期費用に含めず、月額費用欄だけに表示します。</div>
           <div id="guaranteeTargets" class="target-list"></div>
         </section>
 
@@ -146,7 +170,7 @@
       </aside>
     </main>
 
-    <script src="app.js?v=20260712-1"></script>
-    <script src="app-patch.js?v=20260624-4"></script>
+    <script src="app.js?v=20260712-2"></script>
+    <script src="app-patch.js?v=20260712-2"></script>
   </body>
 </html>

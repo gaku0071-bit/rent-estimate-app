@@ -36,12 +36,20 @@ function initialGuaranteeRate(text) {
 function normalizeGuaranteeSettings(settings) {
   const note = settings?.guaranteeNote || "";
   const rate = initialGuaranteeRate(note);
-  if (!rate) return settings;
+  const fixed = fixedGuaranteeAmount(note);
+  const minimum = guaranteeMinimumAmount(note) || Number(settings.guaranteeMinimum || 0);
+  const monthlyRate = Number(note.match(/(?:月額|月次|毎月|月々)[^。・\n\r%]{0,80}(\d+(?:\.\d+)?)\s*(?:%|パーセント)/)?.[1] || 0);
+  const monthlyFixed = amountNear(note, /(?:月額|月次|毎月|月々)[^。・\n\r%]{0,80}(?:[\d,，]+)\s*円/);
+  if (!rate && !fixed && !monthlyRate && !monthlyFixed) return settings;
   return {
     ...settings,
-    guaranteeMode: "percent",
-    guaranteeRate: rate,
-    guaranteeMinimum: guaranteeMinimumAmount(note) || Number(settings.guaranteeMinimum || 0),
+    guaranteeMode: fixed ? "fixed" : rate ? "percent" : settings.guaranteeMode,
+    guaranteeRate: rate || Number(settings.guaranteeRate || 50),
+    guaranteeFixedAmount: fixed || Number(settings.guaranteeFixedAmount || 0),
+    guaranteeMinimum: minimum,
+    monthlyGuaranteeMode: monthlyRate ? "percent" : monthlyFixed ? "fixed" : settings.monthlyGuaranteeMode,
+    monthlyGuaranteeRate: monthlyRate || Number(settings.monthlyGuaranteeRate || 0),
+    monthlyGuaranteeFixed: monthlyFixed || Number(settings.monthlyGuaranteeFixed || 0),
   };
 }
 
