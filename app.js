@@ -1227,7 +1227,7 @@ function freeRentRange() {
 }
 
 function shouldIncludeNextMonthRent() {
-  return Boolean(moveInDateParts() && el("includeNextMonth").checked);
+  return Boolean(el("includeNextMonth").checked);
 }
 
 function proratableMonthlyFee(fee) {
@@ -1369,7 +1369,7 @@ function estimateRows() {
   syncDerivedFees();
   const hasMoveInDate = Boolean(moveInDateParts());
   const baseRows = state.fees.filter((fee) => applicableFee(fee) && fee.timing !== "moveout" && fee.id !== "monthlyGuaranteeFee" && (!hasMoveInDate || !["monthly", "optionalParking"].includes(fee.type)));
-  const monthlyRows = hasMoveInDate ? nextMonthRows() : [];
+  const monthlyRows = shouldIncludeNextMonthRent() ? nextMonthRows() : [];
   return [...baseRows, ...proratedRows(), ...monthlyRows, ...monthlyFullRows(), ...freeRentDeductionRows()]
     .filter((fee) => fee.amount !== 0)
     .sort((a, b) => estimateRowOrder(a) - estimateRowOrder(b));
@@ -1555,11 +1555,14 @@ function renderEstimate() {
   const choiceFees = timingChoiceFees();
   const moveInParts = moveInDateParts();
   const freeRange = freeRentRange();
+  const includeNextMonth = shouldIncludeNextMonthRent();
   const rentRuleNote = moveInParts
-    ? shouldIncludeNextMonthRent()
+    ? includeNextMonth
       ? "翌月分を初期費用に含める設定のため、翌月分の月額費用を見積に含めています。日割は家賃、共益費・管理費、駐車場のみ計算し、その他の月額費用は日割せず入居月分を満額で含めています。"
       : "入居月の日割のみ見積に含めています。日割は家賃、共益費・管理費、駐車場のみ計算し、その他の月額費用は日割せず入居月分を満額で含めています。翌月分を含める場合は「翌月分を初期費用に含める」にチェックしてください。"
-    : "";
+    : includeNextMonth
+      ? "翌月分を初期費用に含める設定のため、翌月分の月額費用を見積に含めています。入居開始日が未入力のため、入居月の日割は計算していません。"
+      : "";
   const notes = [
     rentRuleNote,
     freeRange ? "フリーレント期間に重なる賃料と共益費・管理費を控除しています。" : "",
