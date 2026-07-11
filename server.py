@@ -212,6 +212,9 @@ DEFAULT_FEE_RULES = {
         "引落手数料",
         "家賃等決済サービス利用料",
         "決済サービス利用料",
+        "決済手数料",
+        "月々決済手数料",
+        "毎月決済手数料",
         "毎月保証料",
         "月々保証料",
         "保証会社月額手数料",
@@ -327,6 +330,11 @@ def pick_labeled_money(labels: list[str], text: str) -> tuple[int, str, str]:
             if re.search(rf"{re.escape(label)}\s*[:：]?\s*なし", item_text):
                 return 0, label, "monthly" if "会費" in label else "initial"
             amount_match = re.search(r"([\d,，]+)\s*円", item_text)
+            if amount_match:
+                between_label_and_amount = item_text[len(label) : amount_match.start()]
+                if re.search(r"駐車場|敷地内駐車場|駐車料|駐車区画", between_label_and_amount):
+                    search_from = start + len(label)
+                    continue
             amount = money_to_int(amount_match.group(1)) if amount_match else 0
             if amount:
                 timing_text = item_text
@@ -421,23 +429,169 @@ def normalize_rate_text(text: str) -> str:
     return value
 
 
+GUARANTEE_MONTHLY_WORDS = r"月額|月次|毎月|月々|毎月継続|継続保証|口座振替|口振|引落|決済|収納代行|支払手数料"
+GUARANTEE_INITIAL_WORDS = r"初回|契約時|保証委託料|初回保証料|初回保証委託料|新規契約時"
+GUARANTEE_MONEY_PATTERN = r"(?:[\d,，]+\s*円|\d+(?:\.\d+)?\s*万\s*円)"
+
+
+def guarantee_money_to_int(value: str | None) -> int:
+    if not value:
+        return 0
+    normalized = normalize_rate_text(value)
+    man_match = re.search(r"(\d+(?:\.\d+)?)\s*万\s*円", normalized)
+    if man_match:
+        return round(float(man_match.group(1)) * 10000)
+    yen_match = re.search(r"([\d,，]+)\s*円", normalized)
+    return money_to_int(yen_match.group(1)) if yen_match else 0
+
+
+def _first_rate(patterns: list[str], text: str) -> float:
+    for pattern in patterns:
+        rate = pick_percent(pattern, text)
+        if rate:
+            return rate
+    return 0.0
+
+
+def _guarantee_initial_minimum(text: str, initial_rate: float) -> int:
+    minimum = 0
+    patterns = [
+        rf"(?:最低保証料|最低|下限)[^。・\n\r]{{0,32}}?{GUARANTEE_MONEY_PATTERN}",
+        rf"{GUARANTEE_MONEY_PATTERN}[^。・\n\r]{{0,32}}?(?:最低保証料|最低|下限)",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, re.MULTILINE | re.DOTALL):
+            amount = guarantee_money_to_int(match.group(0))
+            if not amount:
+                continue
+            local = text[max(0, match.start() - 48) : min(len(text), match.end() + 48)]
+            before = text[max(0, match.start() - 120) : match.start()]
+            monthly_near = re.search(GUARANTEE_MONTHLY_WORDS, local)
+            initial_near = re.search(GUARANTEE_INITIAL_WORDS, before + local)
+            if amount < 10000 and monthly_near:
+                continue
+            if monthly_near and not initial_near:
+                continue
+            if initial_rate or initial_near or amount >= 10000:
+                minimum = max(minimum, amount)
+    return minimum
+
+
+def _guarantee_fixed_initial(text: str, initial_rate: float) -> int:
+    if initial_rate:
+        return 0
+    patterns = [
+        rf"(?:初回保証料|初回保証委託料|保証委託料|保証料|保証会社事務手数料)[^。・\n\r%]{{0,60}}?(?:一律|定額)\s*[:：]?\s*({GUARANTEE_MONEY_PATTERN})",
+        rf"(?:一律|定額)\s*({GUARANTEE_MONEY_PATTERN})[^。・\n\r%]{{0,60}}?(?:初回保証料|初回保証委託料|保証委託料|保証料|保証会社)",
+        rf"(?:初回保証料|初回保証委託料|保証委託料|保証会社事務手数料)\s*[:：]?\s*({GUARANTEE_MONEY_PATTERN})",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, re.MULTILINE | re.DOTALL):
+            chunk = text[max(0, match.start() - 24) : min(len(text), match.end() + 24)]
+            if re.search(r"最低|下限|%|パーセント", chunk):
+                continue
+            if re.search(r"月額|月次|毎月|月々|更新|年間|年額", chunk) and not re.search(r"初回|新規契約時|契約時", chunk):
+                continue
+            amount = guarantee_money_to_int(match.group(1))
+            if amount:
+                return amount
+    return 0
+
+
+def _guarantee_monthly_fixed(text: str, monthly_rate: float) -> int:
+    if monthly_rate:
+        return 0
+    patterns = [
+        rf"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|毎月保証料|月々保証料|支払手数料|収納代行手数料|決済手数料|月々決済手数料|毎月決済手数料|口座振替料|口振手数料|引落手数料)[^。・\n\r%]{{0,80}}?({GUARANTEE_MONEY_PATTERN})",
+        rf"(?:月額|毎月|月々)\s*[:：]?\s*({GUARANTEE_MONEY_PATTERN})",
+        rf"(?:^|[（(・\s])月\s*({GUARANTEE_MONEY_PATTERN})",
+    ]
+    for pattern in patterns:
+        for match in re.finditer(pattern, text, re.MULTILINE | re.DOTALL):
+            matched_text = match.group(0)
+            if re.search(r"最低|下限|更新|年間|年額|家賃等|賃料等|賃料総額", matched_text):
+                continue
+            amount = guarantee_money_to_int(match.group(1))
+            if amount:
+                return amount
+    return 0
+
+
+def parse_guarantee_terms(text: str) -> dict[str, float | int | str]:
+    normalized = normalize_rate_text(text).replace("％", "%")
+    normalized = re.sub(r"[ \t]+", " ", normalized)
+    initial_rate = _first_rate(
+        [
+            r"(?:初回保証料|初回保証委託料|契約時保証料|初回保証会社保証料|保証委託料|初回|契約時)[^。・\n\r%]{0,80}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)",
+            r"(?:初回|契約時)[^。・\n\r]{0,80}?(?:月額賃料等|月額家賃等|賃料合計|賃料総額|総賃料|賃料等|家賃等)[^。・\n\r%]{0,40}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)",
+            r"(?:月額賃料等|月額家賃等|賃料合計|賃料総額|総賃料|賃料等|家賃等)[^。・\n\r%]{0,40}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)[^。・\n\r]{0,40}?(?:初回|契約時)",
+        ],
+        normalized,
+    )
+    monthly_rate = _first_rate(
+        [
+            r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|毎月保証料|月々保証料|毎月継続保証料|継続保証料|支払手数料|収納代行手数料|決済手数料|月々決済手数料|毎月決済手数料|月額\s*/)[^。・\n\r%]{0,100}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)",
+            r"(?:月額|毎月|月々)(?!賃料|家賃|賃料等|家賃等)[^。・\n\r]{0,40}?(?:保証|手数料|賃料合計|賃料総額|総賃料)[^。・\n\r%]{0,60}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)",
+            r"(?:初回|初回保証料|契約時)[^。・\n\r]{0,50}?(?:%|パーセント)[^。・\n\r]{0,50}?(?:月額|毎月|月々)[^。・\n\r%]{0,60}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)",
+        ],
+        normalized,
+    )
+    if re.search(rf"初回\s*\d+(?:\.\d+)?\s*(?:%|パーセント)[^。\n\r]{{0,40}}?(?:月|月額)\s*{GUARANTEE_MONEY_PATTERN}", normalized):
+        monthly_rate = 0
+    monthly_fixed_extras = sum(
+        guarantee_money_to_int(match.group(1))
+        for match in re.finditer(rf"(?:\+|＋)\s*[^+＋\d円]{{0,16}}?({GUARANTEE_MONEY_PATTERN})", normalized)
+    )
+    initial_minimum = _guarantee_initial_minimum(normalized, initial_rate)
+    fixed = _guarantee_fixed_initial(normalized, initial_rate)
+    monthly_fixed = _guarantee_monthly_fixed(normalized, monthly_rate)
+    return {
+        "fixed": fixed,
+        "initialRate": initial_rate,
+        "initialMinimum": initial_minimum,
+        "monthlyRate": monthly_rate,
+        "monthlyFixed": monthly_fixed,
+        "monthlyFixedExtra": monthly_fixed_extras,
+        "note": normalized.strip(),
+    }
+
+
 def last_money_amount(text: str) -> int:
     matches = re.findall(r"([\d,，]+)\s*円", text)
     return money_to_int(matches[-1]) if matches else 0
 
 
-def pick_insurance_fee(text: str) -> int:
+def infer_insurance_timing(text: str) -> str:
+    return "monthly" if re.search(r"月額|毎月|月払い|月払|月々|/月|１ヶ月|1ヶ月", text or "") else "initial"
+
+
+def pick_insurance_fee_info(text: str) -> tuple[int, str, str]:
     compact_text = re.sub(r"(?<=\d)\s+(?=\d)", "", text)
     patterns = [
         r"(?:家財保険|火災保険|保険)\s*[:：]\s*[^・\n\r]{0,120}?([\d,，]+)\s*円",
+        r"(?:家財保険|火災保険|保険)\s+[^・\n\r]{0,120}?([\d,，]+)\s*円",
         r"(?:家財保険|火災保険|保険)[^・\n\r]{0,80}?要加入[^・\n\r]{0,80}?([\d,，]+)\s*円",
+        r"(?:家財保険|火災保険|保険)[^・\n\r]{0,80}?(?:月額|毎月|月払い|月払|月々)[^・\n\r]{0,80}?([\d,，]+)\s*円",
     ]
     for pattern in patterns:
         for match in re.finditer(pattern, compact_text, re.MULTILINE | re.DOTALL):
             amount = money_to_int(match.group(1))
+            chunk = match.group(0)
+            timing = infer_insurance_timing(chunk)
+            if timing == "monthly" and 100 <= amount <= 5000:
+                return amount, timing, "火災保険料（月額）"
+            if 100 <= amount <= 5000:
+                return amount, "monthly", "火災保険料（月額）"
             if 10000 <= amount <= 50000:
-                return amount
-    return 0
+                return amount, "initial", "火災保険料（年払い）"
+            if timing == "monthly" and amount:
+                return amount, timing, "火災保険料（月額）"
+    return 0, "initial", "火災保険料（年払い）"
+
+
+def pick_insurance_fee(text: str) -> int:
+    amount, _, _ = pick_insurance_fee_info(text)
+    return amount
 
 
 def infer_fee_timing(text: str, label: str = "") -> str:
@@ -473,7 +627,7 @@ def non_customer_fee_label(label: str) -> bool:
 def inferred_extra_fee_category(label: str, context: str) -> str:
     value = f"{label}{context}"
     category_patterns = [
-        ("monthlyGuaranteeFee", r"月額保証|月次保証|毎月保証|月々保証|月額手数料|月額事務手数料|収納代行|支払手数料|口座振替|口振|引落|決済サービス"),
+        ("monthlyGuaranteeFee", r"月額保証|月次保証|毎月保証|月々保証|月額手数料|月額事務手数料|収納代行|支払手数料|口座振替|口振|引落|決済サービス|決済手数料"),
         ("cleaningFee", r"清掃|クリーニング|くりーにんぐ|退室|原状回復"),
         ("waterSanitizingFee", r"水廻|水回|水まわ|水周|水まわり"),
         ("keyFee", r"鍵|カギ|キー|シリンダ|シリンダー"),
@@ -600,6 +754,16 @@ def extract_pdf_text(pdf_path: Path) -> str:
     return "\n".join(pages)
 
 
+def looks_like_generated_estimate(text: str) -> bool:
+    markers = [
+        "初期費用御見積書",
+        "お支払概算合計",
+        "本見積はPDF記載内容をもとにした概算",
+        "いい部屋ネット札幌大通店",
+    ]
+    return sum(marker in text for marker in markers) >= 2
+
+
 def read_uploaded_pdf(handler: BaseHTTPRequestHandler) -> bytes | None:
     content_type = handler.headers.get("Content-Type", "")
     content_length = int(handler.headers.get("Content-Length", "0") or "0")
@@ -630,9 +794,9 @@ def parse_property(text: str) -> dict:
     )
     key_fee, key_label, key_timing = pick_labeled_money(fee_rules["keyFee"], text)
     antibacterial_fee, antibacterial_label, antibacterial_timing = pick_labeled_money(fee_rules["antibacterialFee"], text)
-    insurance_fee = pick_insurance_fee(text)
+    insurance_fee, insurance_timing, insurance_label = pick_insurance_fee_info(text)
     support_fee, support_label, support_timing = pick_labeled_money(fee_rules["supportFee"], text)
-    if support_fee and support_timing == "initial" and re.search(r"24|２４|月額|リペアサービス", support_label):
+    if support_fee and support_timing == "initial" and re.search(r"24|２４|月額|リペアサービス|安心サポート|サポート|クラブ|くらし|暮らし|ライフ", support_label):
         support_timing = "monthly"
     ac_cleaning_fee, ac_cleaning_label, ac_cleaning_timing = pick_labeled_money(fee_rules["acCleaningFee"], text)
     stove_fee, stove_label, stove_timing = pick_labeled_money(fee_rules["stoveMaintenanceFee"], text)
@@ -640,6 +804,10 @@ def parse_property(text: str) -> dict:
     pet_fee, pet_label, pet_timing = pick_labeled_money(fee_rules["petFee"], text)
     water_drain_fee, water_drain_label, water_drain_timing = pick_labeled_money(fee_rules["waterDrainFee"], text)
     gas_lease_fee, gas_lease_label, gas_lease_timing = pick_labeled_money(fee_rules["gasLeaseFee"], text)
+    if town_fee and town_timing == "initial":
+        town_timing = "monthly"
+    if gas_lease_fee and gas_lease_timing == "initial":
+        gas_lease_timing = "monthly"
     inquiry = pick(r"お問い合わせ番号\s*([^\n]+)", text)
     free_rent = pick(r"(無条件FR\d+か月対象)", text)
 
@@ -658,20 +826,10 @@ def parse_property(text: str) -> dict:
     )
     guarantee_text = f"{guarantee_note}\n{text}" if guarantee_note else text
     guarantee_text_for_rates = normalize_rate_text(guarantee_text)
-    monthly_guarantee_rate_patterns = [
-        r"(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|毎月保証料|月々保証料|支払手数料|収納代行手数料)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
-        r"(?:月額|毎月|月々)(?!賃料|家賃|賃料等|家賃等)[^。・\n\r]{0,24}?(?:保証|手数料)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
-        r"(?:初回|初回保証料|契約時)[^。・\n\r]{0,40}?(?:%|パーセント)[^。・\n\r]{0,30}?(?:月額|毎月|月々)[^\d]*(\d+(?:\.\d+)?)(?:%|パーセント)",
-    ]
-    monthly_guarantee_rate = next(
-        (rate for rate in (pick_percent(pattern, guarantee_text_for_rates) for pattern in monthly_guarantee_rate_patterns) if rate),
-        0,
-    )
+    guarantee_terms = parse_guarantee_terms(guarantee_text_for_rates)
+    monthly_guarantee_rate = float(guarantee_terms["monthlyRate"])
+    monthly_fixed_extras = int(guarantee_terms["monthlyFixedExtra"])
     if monthly_guarantee_rate:
-        monthly_fixed_extras = sum(
-            money_to_int(value)
-            for value in re.findall(r"(?:\+|＋)\s*[^+＋\d円]{0,16}?([\d,，]+)\s*円", guarantee_text)
-        )
         monthly_guarantee_fee = int(monthly_subtotal * monthly_guarantee_rate / 100 + 0.5) + monthly_fixed_extras
         monthly_guarantee_label = (
             f"月額保証料（{monthly_guarantee_rate:g}%＋{monthly_fixed_extras:,}円）"
@@ -679,8 +837,11 @@ def parse_property(text: str) -> dict:
             else f"月額保証料（{monthly_guarantee_rate:g}%）"
         )
         monthly_guarantee_timing = "monthly"
+    elif int(guarantee_terms["monthlyFixed"]):
+        monthly_guarantee_fee = int(guarantee_terms["monthlyFixed"])
+        monthly_guarantee_label = "月額保証料"
+        monthly_guarantee_timing = "monthly"
     else:
-        monthly_fixed_extras = 0
         monthly_guarantee_fee, monthly_guarantee_label, monthly_guarantee_timing = pick_labeled_money(
             fee_rules["monthlyGuaranteeFee"],
             guarantee_text,
@@ -689,9 +850,11 @@ def parse_property(text: str) -> dict:
             monthly_guarantee_fee = money_to_int(pick(r"月額\s*[:：]?\s*([\d,，]+)円", guarantee_text))
             monthly_guarantee_label = "月額保証料" if monthly_guarantee_fee else monthly_guarantee_label
             monthly_guarantee_timing = "monthly" if monthly_guarantee_fee else monthly_guarantee_timing
-    fixed_guarantee = pick_fixed_initial_guarantee(guarantee_text_for_rates)
-    initial_guarantee_rate = pick_initial_guarantee_rate(guarantee_text_for_rates)
-    initial_guarantee = fixed_guarantee or int(monthly_subtotal * ((initial_guarantee_rate or 50) / 100) + 0.5)
+    fixed_guarantee = int(guarantee_terms["fixed"]) or pick_fixed_initial_guarantee(guarantee_text_for_rates)
+    initial_guarantee_rate = float(guarantee_terms["initialRate"]) or pick_initial_guarantee_rate(guarantee_text_for_rates)
+    guarantee_minimum = int(guarantee_terms["initialMinimum"])
+    calculated_initial_guarantee = int(monthly_subtotal * ((initial_guarantee_rate or 50) / 100) + 0.5)
+    initial_guarantee = fixed_guarantee or max(calculated_initial_guarantee, guarantee_minimum)
     initial_guarantee_label = "保証会社事務手数料" if fixed_guarantee and "事務手数料" in guarantee_text else "初回保証料"
     extra_fees = extract_unregistered_fees(text, fee_rules)
 
@@ -738,6 +901,7 @@ def parse_property(text: str) -> dict:
             "guaranteeNote": guarantee_note,
             "guaranteeMode": "fixed" if fixed_guarantee else "percent",
             "guaranteeRate": 0 if fixed_guarantee else initial_guarantee_rate or 50,
+            "guaranteeMinimum": guarantee_minimum,
             "monthlyGuaranteeMode": "percent" if monthly_guarantee_rate else "fixed",
             "monthlyGuaranteeRate": monthly_guarantee_rate,
             "monthlyGuaranteeFixedExtra": monthly_fixed_extras,
@@ -756,9 +920,11 @@ def parse_property(text: str) -> dict:
                 "waterDrainFee": water_drain_label,
                 "monthlyGuaranteeFee": monthly_guarantee_label,
                 "guaranteePersonal": initial_guarantee_label,
+                "insuranceFee": insurance_label,
                 "keyMoney": "礼金",
             },
             "feeTimings": {
+                "insuranceFee": insurance_timing,
                 "cleaningFee": cleaning_timing,
                 "waterSanitizingFee": water_sanitizing_timing,
                 "keyFee": key_timing,
@@ -775,6 +941,7 @@ def parse_property(text: str) -> dict:
                 "keyMoney": "initial",
             },
             "feeTypes": {
+                "insuranceFee": "monthly" if insurance_timing == "monthly" else "initial",
                 "supportFee": "monthly" if support_timing == "monthly" else "initial",
                 "townFee": "monthly" if town_timing == "monthly" else "initial",
                 "gasLeaseFee": "monthly" if gas_lease_timing == "monthly" else "initial",
@@ -824,6 +991,12 @@ class AppHandler(BaseHTTPRequestHandler):
             tmp.write(pdf_bytes)
             tmp.flush()
             text = extract_pdf_text(Path(tmp.name))
+        if looks_like_generated_estimate(text):
+            self.send_response(422)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "このアプリで出力した見積PDFは読み込み対象外です。リアプロ等の物件概要PDFを読み込んでください。"}, ensure_ascii=False).encode("utf-8"))
+            return
         payload = parse_property(text)
         self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")

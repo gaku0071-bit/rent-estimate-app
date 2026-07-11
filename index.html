@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b6b6f" />
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=20260624-2" />
+    <link rel="stylesheet" href="styles.css?v=20260710-2" />
   </head>
   <body>
     <main class="app">
@@ -59,6 +59,12 @@
             <label>宛名<input id="recipientName" value="お客様" /></label>
             <label>発行日<input id="issueDate" type="date" /></label>
             <label>入居開始日<input id="moveInDate" type="date" /></label>
+            <label>火災保険の支払い方法
+              <select id="insurancePaymentMode">
+                <option value="annual">年払い・契約時</option>
+                <option value="monthly">月払い</option>
+              </select>
+            </label>
             <label>フリーレント開始<input id="freeRentStart" type="date" /></label>
             <label>フリーレント終了<input id="freeRentEnd" type="date" /></label>
             <label>日割日数<input id="prorateDays" type="number" min="0" max="31" value="0" /></label>
@@ -127,10 +133,20 @@
 
       <aside class="preview-wrap">
         <div id="estimate" class="a4"></div>
+        <section class="share-panel">
+          <div class="section-title">
+            <div>
+              <h2>メール・LINE貼付用</h2>
+              <p class="section-help">この内容をそのままコピーして貼り付けできます。</p>
+            </div>
+            <button id="copyTextButton" type="button">本文をコピー</button>
+          </div>
+          <textarea id="shareText" readonly aria-label="メール・LINE貼付用テキスト"></textarea>
+        </section>
       </aside>
     </main>
 
-    <script src="app.js?v=20260624-2"></script>
+    <script src="app.js?v=20260710-2"></script>
     <script src="app-patch.js?v=20260624-4"></script>
   </body>
 </html>

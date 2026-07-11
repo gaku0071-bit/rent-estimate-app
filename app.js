@@ -68,7 +68,7 @@ const feeDefinitions = [
   ["仲介手数料", "brokerageFee", "initial", false, "initial"],
   ["初回保証料", "guaranteePersonal", "personal", false, "initial"],
   ["初回保証料", "guaranteeCorporate", "corporate", false, "initial"],
-  ["保険料（2年）", "insuranceFee", "initial", false, "initial"],
+  ["火災保険料", "insuranceFee", "initial", false, "initial"],
   ["室内清掃費用", "cleaningFee", "initial", false, "initial"],
   ["水廻り消毒料", "waterSanitizingFee", "initial", false, "initial"],
   ["カギ交換費用", "keyFee", "initial", false, "initial"],
@@ -143,13 +143,73 @@ function setFeeTiming(id, timing) {
   if (fee) fee.timing = timing;
 }
 
+function setFeeType(id, type) {
+  const fee = state.fees.find((item) => item.id === id);
+  if (fee) fee.type = type;
+}
+
 function setFeeLabel(id, label) {
   const fee = state.fees.find((item) => item.id === id);
   if (fee && label) fee.label = label;
 }
 
+function insuranceFeeItem() {
+  return state.fees.find((fee) => fee.id === "insuranceFee");
+}
+
+function insurancePaymentModeFromFee() {
+  const fee = insuranceFeeItem();
+  return fee && (fee.timing === "monthly" || fee.type === "monthly") ? "monthly" : "annual";
+}
+
+function normalizeInsuranceLabel(label, mode) {
+  const base = String(label || "火災保険料")
+    .replace(/（(?:月額|月払い|年払い|契約時|2年|２年)[^）]*）/g, "")
+    .replace(/\((?:月額|月払い|年払い|契約時|2年|２年)[^)]*\)/g, "")
+    .trim() || "火災保険料";
+  return mode === "monthly" ? `${base}（月額）` : `${base}（年払い）`;
+}
+
+function applyInsurancePaymentMode(mode, { updateLabel = true } = {}) {
+  const fee = insuranceFeeItem();
+  if (!fee) return;
+  const nextMode = mode === "monthly" ? "monthly" : "annual";
+  if (nextMode === "monthly") {
+    fee.type = "monthly";
+    fee.timing = "monthly";
+    fee.noProrate = true;
+    fee.noInitialEstimate = false;
+  } else {
+    fee.type = "initial";
+    fee.timing = "initial";
+    fee.noProrate = false;
+    fee.noInitialEstimate = false;
+  }
+  if (updateLabel) fee.label = normalizeInsuranceLabel(fee.label, nextMode);
+  state.settings = {
+    ...(state.settings || {}),
+    feeTimings: {
+      ...(state.settings?.feeTimings || {}),
+      insuranceFee: fee.timing,
+    },
+    feeTypes: {
+      ...(state.settings?.feeTypes || {}),
+      insuranceFee: fee.type,
+    },
+    feeLabels: {
+      ...(state.settings?.feeLabels || {}),
+      insuranceFee: fee.label,
+    },
+  };
+}
+
+function syncInsurancePaymentSelect() {
+  const select = el("insurancePaymentMode");
+  if (select) select.value = insurancePaymentModeFromFee();
+}
+
 function isMonthlyGuaranteeLabel(label) {
-  return /月額保証|月次保証|毎月保証|月々保証|月額手数料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料|引落手数料|家賃等決済サービス利用料|決済サービス利用料/.test(String(label || ""));
+  return /月額保証|月次保証|毎月保証|月々保証|月額手数料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料|引落手数料|家賃等決済サービス利用料|決済サービス利用料|決済手数料|月々決済手数料|毎月決済手数料/.test(String(label || ""));
 }
 
 function normalizeManualFee(fee) {
@@ -298,6 +358,8 @@ function monthValueToAmount(value, rent) {
 }
 
 function moneyToInt(value) {
+  const manMatch = String(value || "").normalize("NFKC").match(/(\d+(?:\.\d+)?)\s*万\s*円/);
+  if (manMatch) return Math.round(Number(manMatch[1]) * 10000);
   const digits = String(value || "").replace(/[^\d]/g, "");
   return digits ? Number(digits) : 0;
 }
@@ -305,7 +367,7 @@ function moneyToInt(value) {
 function amountNear(text, pattern) {
   const match = String(text || "").match(pattern);
   if (!match) return 0;
-  const amounts = match[0].match(/[\d,，]+円/g) || [];
+  const amounts = match[0].match(/(?:[\d,，]+|\d+(?:\.\d+)?\s*万)円/g) || [];
   return amounts.length ? moneyToInt(amounts.at(-1)) : 0;
 }
 
@@ -326,31 +388,127 @@ function inferPaymentTiming(text, fallback = "initial") {
   return fallback;
 }
 
-function fixedGuaranteeAmount(text) {
-  const value = String(text || "");
+const guaranteeMonthlyWords = /月額|月次|毎月|月々|毎月継続|継続保証|口座振替|口振|引落|決済|収納代行|支払手数料/;
+const guaranteeInitialWords = /初回|契約時|保証委託料|初回保証料|初回保証委託料|新規契約時/;
+const guaranteeMoneyPatternSource = "(?:[\\d,，]+\\s*円|\\d+(?:\\.\\d+)?\\s*万\\s*円)";
+
+function firstRate(value, patterns) {
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (match?.[1]) return Number(match[1]);
+  }
+  return 0;
+}
+
+function guaranteeInitialMinimum(value, initialRate) {
+  let minimum = 0;
   const patterns = [
-    /(?:初回保証料|保証料|保証委託料|保証会社事務手数料)[^。・\n\r%]{0,40}?一律\s*[:：]?\s*[\d,，]+円/g,
-    /一律\s*[\d,，]+円[^。・\n\r%]{0,40}?(?:初回保証料|保証料|保証委託料|保証会社)/g,
-    /(?:初回保証料|保証会社事務手数料|保証委託料)[^。・\n\r%]{0,40}?[\d,，]+円/g,
+    new RegExp(`(?:最低保証料|最低|下限)[^。・\\n\\r]{0,32}?${guaranteeMoneyPatternSource}`, "g"),
+    new RegExp(`${guaranteeMoneyPatternSource}[^。・\\n\\r]{0,32}?(?:最低保証料|最低|下限)`, "g"),
   ];
   for (const pattern of patterns) {
     for (const match of value.matchAll(pattern)) {
-      const chunk = value.slice(Math.max(0, match.index - 4), match.index + match[0].length);
-      if (/最低|下限/.test(chunk) || /%|パーセント/.test(chunk)) continue;
-      if (/月額|月次|毎月|更新|年間/.test(chunk) && !/初回|新規契約時/.test(chunk)) continue;
       const amount = moneyToInt(match[0]);
+      if (!amount) continue;
+      const local = value.slice(Math.max(0, match.index - 48), match.index + match[0].length + 48);
+      const before = value.slice(Math.max(0, match.index - 120), match.index);
+      const monthlyNear = guaranteeMonthlyWords.test(local);
+      const initialNear = guaranteeInitialWords.test(`${before}${local}`);
+      if (amount < 10000 && monthlyNear) continue;
+      if (monthlyNear && !initialNear) continue;
+      if (initialRate || initialNear || amount >= 10000) minimum = Math.max(minimum, amount);
+    }
+  }
+  return minimum;
+}
+
+function guaranteeFixedInitial(value, initialRate) {
+  if (initialRate) return 0;
+  const patterns = [
+    new RegExp(`(?:初回保証料|初回保証委託料|保証委託料|保証料|保証会社事務手数料)[^。・\\n\\r%]{0,60}?(?:一律|定額)\\s*[:：]?\\s*(${guaranteeMoneyPatternSource})`, "g"),
+    new RegExp(`(?:一律|定額)\\s*(${guaranteeMoneyPatternSource})[^。・\\n\\r%]{0,60}?(?:初回保証料|初回保証委託料|保証委託料|保証料|保証会社)`, "g"),
+    new RegExp(`(?:初回保証料|初回保証委託料|保証委託料|保証会社事務手数料)\\s*[:：]?\\s*(${guaranteeMoneyPatternSource})`, "g"),
+  ];
+  for (const pattern of patterns) {
+    for (const match of value.matchAll(pattern)) {
+      const chunk = value.slice(Math.max(0, match.index - 24), match.index + match[0].length + 24);
+      if (/最低|下限|%|パーセント/.test(chunk)) continue;
+      if (/月額|月次|毎月|月々|更新|年間|年額/.test(chunk) && !/初回|新規契約時|契約時/.test(chunk)) continue;
+      const amount = moneyToInt(match[1]);
       if (amount) return amount;
     }
   }
   return 0;
 }
 
+function guaranteeMonthlyFixed(value, monthlyRate) {
+  if (monthlyRate) return 0;
+  const patterns = [
+    new RegExp(`(?:月額保証料|月次保証料|月額手数料|月額事務手数料|毎月保証料|月々保証料|支払手数料|収納代行手数料|決済手数料|月々決済手数料|毎月決済手数料|口座振替料|口振手数料|引落手数料)[^。・\\n\\r%]{0,80}?(${guaranteeMoneyPatternSource})`, "g"),
+    new RegExp(`(?:月額|毎月|月々)\\s*[:：]?\\s*(${guaranteeMoneyPatternSource})`, "g"),
+    new RegExp(`(?:^|[（(・\\s])月\\s*(${guaranteeMoneyPatternSource})`, "g"),
+  ];
+  for (const pattern of patterns) {
+    for (const match of value.matchAll(pattern)) {
+      if (/最低|下限|更新|年間|年額|家賃等|賃料等|賃料総額/.test(match[0])) continue;
+      const amount = moneyToInt(match[1]);
+      if (amount) return amount;
+    }
+  }
+  return 0;
+}
+
+function parseGuaranteeTerms(text) {
+  const value = normalizeRateText(String(text || "").normalize("NFKC").replace(/％/g, "%")).replace(/[ \t]+/g, " ");
+  const initialRate = firstRate(value, [
+    /(?:初回保証料|初回保証委託料|契約時保証料|初回保証会社保証料|保証委託料|初回|契約時)[^。・\n\r%]{0,80}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
+    /(?:初回|契約時)[^。・\n\r]{0,80}?(?:月額賃料等|月額家賃等|賃料合計|賃料総額|総賃料|賃料等|家賃等)[^。・\n\r%]{0,40}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
+    /(?:月額賃料等|月額家賃等|賃料合計|賃料総額|総賃料|賃料等|家賃等)[^。・\n\r%]{0,40}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)[^。・\n\r]{0,40}?(?:初回|契約時)/,
+  ]);
+  const monthlyRate = firstRate(value, [
+    /(?:月額保証料|月次保証料|月額手数料|月額事務手数料|\[毎月\]保証料|毎月保証料|月々保証料|毎月継続保証料|継続保証料|支払手数料|収納代行手数料|決済手数料|月々決済手数料|毎月決済手数料|月額\s*\/)[^。・\n\r%]{0,100}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
+    /(?:月額|毎月|月々)(?!賃料|家賃|賃料等|家賃等)[^。・\n\r]{0,40}?(?:保証|手数料|賃料合計|賃料総額|総賃料)[^。・\n\r%]{0,60}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
+    /(?:初回|初回保証料|契約時)[^。・\n\r]{0,50}?(?:%|パーセント)[^。・\n\r]{0,50}?(?:月額|毎月|月々)[^。・\n\r%]{0,60}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
+  ]);
+  const safeMonthlyRate = new RegExp(`初回\\s*\\d+(?:\\.\\d+)?\\s*(?:%|パーセント)[^。\\n\\r]{0,40}?(?:月|月額)\\s*${guaranteeMoneyPatternSource}`).test(value) ? 0 : monthlyRate;
+  const monthlyFixedExtraPattern = new RegExp(`(?:\\+|＋)\\s*[^+＋\\d円]{0,16}?(${guaranteeMoneyPatternSource})`, "g");
+  const monthlyFixedExtra = [...value.matchAll(monthlyFixedExtraPattern)].reduce((sum, match) => sum + moneyToInt(match[1]), 0);
+  return {
+    fixed: guaranteeFixedInitial(value, initialRate),
+    initialRate,
+    initialMinimum: guaranteeInitialMinimum(value, initialRate),
+    monthlyRate: safeMonthlyRate,
+    monthlyFixed: guaranteeMonthlyFixed(value, safeMonthlyRate),
+    monthlyFixedExtra,
+    note: value.trim(),
+  };
+}
+
+function fixedGuaranteeAmount(text) {
+  return parseGuaranteeTerms(text).fixed;
+}
+
 function guaranteeMinimumAmount(text) {
-  const value = String(text || "");
-  return amountNear(
-    value,
-    /(?:初回保証料|初回保証委託料|保証委託料|初回)[^。・\n\r]{0,100}?(?:最低|下限)[^。・\n\r]{0,30}?[\d,，]+円/,
-  );
+  return parseGuaranteeTerms(text).initialMinimum;
+}
+
+function initialGuaranteeRate(text) {
+  return parseGuaranteeTerms(text).initialRate;
+}
+
+function normalizeGuaranteeSettings(settings) {
+  const note = settings?.guaranteeNote || "";
+  const terms = parseGuaranteeTerms(note);
+  if (!terms.initialRate && !terms.fixed && !terms.monthlyRate && !terms.monthlyFixed) return settings;
+  return {
+    ...settings,
+    guaranteeMode: terms.fixed ? "fixed" : "percent",
+    guaranteeRate: terms.fixed ? 0 : terms.initialRate || Number(settings.guaranteeRate || 50),
+    guaranteeMinimum: terms.initialMinimum || Number(settings.guaranteeMinimum || 0),
+    monthlyGuaranteeMode: terms.monthlyRate ? "percent" : terms.monthlyFixed ? "fixed" : settings.monthlyGuaranteeMode,
+    monthlyGuaranteeRate: terms.monthlyRate || Number(settings.monthlyGuaranteeRate || 0),
+    monthlyGuaranteeFixedExtra: terms.monthlyFixedExtra || Number(settings.monthlyGuaranteeFixedExtra || 0),
+  };
 }
 
 function nonCustomerFeeLabel(label) {
@@ -682,35 +840,29 @@ function applyCsvEnhancement(item) {
     applied.push("水道料");
   }
 
-  const fixedGuarantee = fixedGuaranteeAmount(notes);
-  const compactNotes = normalizeRateText(notes);
+  const guaranteeTerms = parseGuaranteeTerms(notes);
+  const fixedGuarantee = guaranteeTerms.fixed;
   if (fixedGuarantee) {
     state.settings.guaranteeMode = "fixed";
     state.settings.guaranteeRate = 0;
+    state.settings.guaranteeMinimum = 0;
     setFeeAmount("guaranteePersonal", fixedGuarantee);
     setFeeLabel("guaranteePersonal", "初回保証料");
     applied.push("初回保証料");
   } else {
-    const initialRate = Number(compactNotes.match(/初回保証料[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] || 0);
+    const initialRate = guaranteeTerms.initialRate;
     if (initialRate) {
       state.settings.guaranteeMode = "percent";
       state.settings.guaranteeRate = initialRate;
-      state.settings.guaranteeMinimum = guaranteeMinimumAmount(notes);
+      state.settings.guaranteeMinimum = guaranteeTerms.initialMinimum;
       el("guaranteeRate").value = initialRate;
       applied.push(`初回保証料${initialRate}%`);
     }
   }
 
-  const monthlyRate = Number(
-    compactNotes.match(/(?:月額手数料|月額保証料|月次保証料|月額事務手数料|毎月保証料|月々保証料|支払手数料|収納代行手数料)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] ||
-      compactNotes.match(/(?:月額|毎月|月々)(?!賃料|家賃|賃料等|家賃等)[^。・\n\r]{0,24}?(?:保証|手数料)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] ||
-      compactNotes.match(/(?:初回|初回保証料|契約時)[^。・\n\r]{0,40}?(?:%|パーセント)[^。・\n\r]{0,30}?(?:月額|毎月|月々)[^%\d]*(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] ||
-      0,
-  );
-  const monthlyFixed =
-    amountNear(notes, /(?:月額手数料|月額保証料|月次保証料|月額事務手数料|収納代行手数料|支払手数料|口座振替料|口振手数料)[^。・\n\r]*?[\d,，]+円/) ||
-    amountNear(notes, /月額\s*[:：]?\s*[\d,，]+円/);
-  const monthlyFixedExtras = [...notes.matchAll(/(?:\+|＋)\s*[^+＋\d円]{0,16}?([\d,，]+)\s*円/g)].reduce((sum, match) => sum + moneyToInt(match[1]), 0);
+  const monthlyRate = guaranteeTerms.monthlyRate;
+  const monthlyFixed = guaranteeTerms.monthlyFixed;
+  const monthlyFixedExtras = guaranteeTerms.monthlyFixedExtra;
   if (monthlyRate) {
     state.settings.monthlyGuaranteeMode = "percent";
     state.settings.monthlyGuaranteeRate = monthlyRate;
@@ -786,10 +938,11 @@ function resetToBlank() {
     "inquiry",
     "issueDate",
     "moveInDate",
+    "insurancePaymentMode",
     "freeRentStart",
     "freeRentEnd",
   ].forEach((id) => {
-    el(id).value = "";
+    el(id).value = id === "insurancePaymentMode" ? "annual" : "";
   });
   el("prorateDays").value = 0;
   el("monthDays").value = 30;
@@ -814,7 +967,8 @@ function resetToBlank() {
 
 function loadData(data) {
   state.lastData = structuredClone(data);
-  const { property, amounts, settings } = data;
+  const { property, amounts } = data;
+  const settings = normalizeGuaranteeSettings(data.settings || {});
   state.estimateType = "personal";
   document.querySelectorAll("[data-estimate-type]").forEach((button) => {
     button.classList.toggle("active", button.dataset.estimateType === "personal");
@@ -854,6 +1008,11 @@ function loadData(data) {
     guaranteeTarget,
     derived: ["guaranteePersonal", "guaranteeCorporate", "brokerageFee"].includes(key) || (key === "monthlyGuaranteeFee" && settings.monthlyGuaranteeMode === "percent"),
   }));
+  applyInsurancePaymentMode(
+    settings.feeTimings?.insuranceFee === "monthly" || settings.feeTypes?.insuranceFee === "monthly" ? "monthly" : "annual",
+    { updateLabel: !settings.feeLabels?.insuranceFee },
+  );
+  syncInsurancePaymentSelect();
   (settings.extraFees || []).forEach((fee) => {
     const result = applyUserFeeRuleToExtra(fee);
     if (result.ignored) return;
@@ -945,6 +1104,12 @@ function timingChoiceFees() {
 
 function recipientHonorific() {
   return state.estimateType === "personal" ? "様" : "御中";
+}
+
+function recipientDisplayName() {
+  const name = textValue("recipientName") || "お客様";
+  if (/様$|御中$/.test(name) || name === "お客様") return name;
+  return `${name} ${recipientHonorific()}`;
 }
 
 function corporateGuaranteeMessage() {
@@ -1230,6 +1395,94 @@ function moveoutTotal() {
   return moveoutRows().reduce((sum, fee) => sum + Number(fee.amount || 0), 0);
 }
 
+function formatDateText(value) {
+  if (!value) return "-";
+  const [year, month, day] = String(value).split("-").map(Number);
+  if (!year || !month || !day) return value;
+  return `${year}/${month}/${day}`;
+}
+
+function plainAmount(value) {
+  return `${Number(value || 0).toLocaleString("ja-JP")}円`;
+}
+
+function shareLine(label, value) {
+  return `${label}: ${value || "-"}`;
+}
+
+function feeLinesForShare(rows, emptyText) {
+  if (!rows.length) return [emptyText];
+  return rows.map((fee) => `・${fee.label}: ${plainAmount(fee.amount)}（${timingLabel(fee.timing)}）`);
+}
+
+function summaryFeeLinesForShare(rows, emptyText) {
+  if (!rows.length) return [emptyText];
+  return rows.map((fee) => `・${fee.label}: ${plainAmount(fee.amount)}`);
+}
+
+function buildShareText({ kind, rows, monthlyRows, exitRows, property, notes }) {
+  const lines = [
+    "【賃貸初期費用のお見積り】",
+    recipientDisplayName(),
+    "",
+    shareLine("物件名", `${property.title || ""}${property.room ? ` ${property.room}` : ""}`.trim()),
+    shareLine("所在地", property.address),
+    shareLine("交通", property.access),
+    shareLine("間取り", property.layout),
+    shareLine("専有面積", property.area),
+    shareLine("入居開始日", formatDateText(el("moveInDate").value)),
+    shareLine("見積区分", kind),
+    "",
+    `■ 初期費用合計: ${plainAmount(total())}`,
+    ...feeLinesForShare(rows, "・初期費用項目はありません"),
+    "",
+    `■ 月額費用合計: ${plainAmount(monthlySummaryTotal())}`,
+    ...summaryFeeLinesForShare(monthlyRows, "・月額費用項目はありません"),
+    "",
+    `■ 退去時費用合計: ${plainAmount(moveoutTotal())}`,
+    ...summaryFeeLinesForShare(exitRows, "・退去時費用項目はありません"),
+  ];
+
+  const plainNotes = notes
+    .map((note) => String(note).replace(/<[^>]*>/g, ""))
+    .filter(Boolean);
+  if (plainNotes.length) {
+    lines.push("", "■ 備考", ...plainNotes.map((note) => `・${note}`));
+  }
+
+  lines.push("", `${storeInfo.name}`, `${storeInfo.address1}`, `${storeInfo.address2}`, `TEL ${storeInfo.tel}`);
+  return lines.join("\n");
+}
+
+function renderShareText(context) {
+  const textarea = el("shareText");
+  if (!textarea) return;
+  textarea.value = buildShareText(context);
+}
+
+async function copyShareText() {
+  const textarea = el("shareText");
+  const text = textarea?.value || "";
+  if (!text) {
+    el("status").textContent = "コピーする見積本文がありません。";
+    return;
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      textarea.focus();
+      textarea.select();
+      document.execCommand("copy");
+    }
+    el("status").textContent = "メール・LINE貼付用の本文をコピーしました。";
+  } catch {
+    textarea.focus();
+    textarea.select();
+    el("status").textContent = "自動コピーできませんでした。本文欄を選択してコピーしてください。";
+  }
+}
+
 function renderFeeEditor() {
   const wrap = el("feeEditor");
   const notice = el("timingNotice");
@@ -1285,6 +1538,7 @@ function renderEstimate() {
   const rows = estimateRows();
   const monthlyRows = monthlySummaryRows();
   const exitRows = moveoutRows();
+  const estimateEl = el("estimate");
   const property = {
     title: textValue("propertyTitle"),
     room: textValue("room"),
@@ -1316,7 +1570,8 @@ function renderEstimate() {
     guaranteeNote ? `保証会社条件: ${escapeHtml(guaranteeNote)}` : "",
   ].filter(Boolean);
 
-  el("estimate").innerHTML = `
+  estimateEl.className = `a4 ${rows.length + monthlyRows.length + exitRows.length > 26 ? "compact-print" : ""}`;
+  estimateEl.innerHTML = `
     <div class="estimate-head">
       <div class="brand-block">
         <img class="store-logo" src="store-logo.png" alt="いい部屋ネット" />
@@ -1333,7 +1588,7 @@ function renderEstimate() {
         問い合わせ番号 ${escapeHtml(property.inquiry || "-")}
       </div>
     </div>
-    <div class="recipient">${escapeHtml(textValue("recipientName") || "お客様")} ${recipientHonorific()}</div>
+    <div class="recipient">${escapeHtml(recipientDisplayName())}</div>
     <div class="property-box">
       <dl>
         ${definition("物件名", property.title, "号室", property.room)}
@@ -1396,6 +1651,7 @@ function renderEstimate() {
       </aside>
     </div>
   `;
+  renderShareText({ kind, rows, monthlyRows, exitRows, property, notes });
 }
 
 function definition(a, av, b, bv) {
@@ -1653,6 +1909,18 @@ document.addEventListener("change", (event) => {
     renderEstimate();
     return;
   }
+  if (target.id === "insurancePaymentMode") {
+    applyInsurancePaymentMode(target.value);
+    renderFeeEditor();
+    syncDerivedFees();
+    renderGuaranteeTargets();
+    updateGuaranteeFeeInput();
+    renderEstimate();
+    el("status").textContent = target.value === "monthly"
+      ? "火災保険料を月払いとして月額費用に反映しました。"
+      : "火災保険料を年払い・契約時払いとして初期費用に反映しました。";
+    return;
+  }
   if (["freeRentStart", "freeRentEnd", "includeNextMonth"].includes(target.id)) {
     renderEstimate();
     return;
@@ -1668,6 +1936,10 @@ document.addEventListener("change", (event) => {
     const fee = state.fees[Number(target.dataset.index)];
     fee[target.dataset.field] = target.value;
     if (target.dataset.field === "label") normalizeManualFee(fee);
+    if (fee.id === "insuranceFee" && ["type", "timing"].includes(target.dataset.field)) {
+      applyInsurancePaymentMode(insurancePaymentModeFromFee(), { updateLabel: false });
+      syncInsurancePaymentSelect();
+    }
     syncDerivedFees();
     renderGuaranteeTargets();
     updateGuaranteeFeeInput();
@@ -1739,6 +2011,7 @@ el("applyCsvButton").addEventListener("click", () => {
 el("exportRulesButton").addEventListener("click", exportUserRules);
 
 el("printButton").addEventListener("click", () => window.print());
+el("copyTextButton")?.addEventListener("click", copyShareText);
 
 window.addEventListener("message", receiveExtensionData);
 
