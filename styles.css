@@ -270,6 +270,11 @@ input:focus {
   outline: 3px solid color-mix(in srgb, var(--focus), transparent 55%);
 }
 
+input.input-warning {
+  border-color: #d43f3a;
+  background: #fff5f5;
+}
+
 select:focus {
   border-color: var(--accent);
   outline: 3px solid color-mix(in srgb, var(--focus), transparent 55%);

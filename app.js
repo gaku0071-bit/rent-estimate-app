@@ -125,6 +125,64 @@ function dateForInput(value) {
   return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
 }
 
+function formatDateForNotice(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+function inputDateToDate(value) {
+  if (!value) return null;
+  const [year, month, day] = String(value).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function availabilityDateCandidates(text) {
+  const source = String(text || "");
+  const datePattern = /(\d{4})[年/.-](\d{1,2})[月/.-](\d{1,2})日?/g;
+  const candidates = [];
+  let match;
+  while ((match = datePattern.exec(source))) {
+    const context = source.slice(Math.max(0, match.index - 30), match.index + match[0].length + 30);
+    if (!/入居可能|入居可|入居時期|空室|清掃|退去予定|退去日|退去|解約予定/.test(context)) continue;
+    const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    if (Number.isNaN(date.getTime())) continue;
+    let label = "入居可能日";
+    if (/退去予定|解約予定/.test(context)) label = "退去予定日";
+    else if (/退去日|退去/.test(context)) label = "退去日";
+    candidates.push({ label, date, source: match[0] });
+  }
+  return candidates;
+}
+
+function availabilityConstraint() {
+  const candidates = availabilityDateCandidates(state.property?.moveIn || "");
+  if (!candidates.length) return null;
+  return candidates.sort((a, b) => b.date.getTime() - a.date.getTime())[0];
+}
+
+function moveInDateWarning() {
+  const selectedDate = inputDateToDate(el("moveInDate")?.value);
+  const constraint = availabilityConstraint();
+  if (!selectedDate || !constraint) return "";
+  if (selectedDate.getTime() >= constraint.date.getTime()) return "";
+  return `入力した入居開始日（${formatDateForNotice(selectedDate)}）が、読み取り元の${constraint.label}（${formatDateForNotice(constraint.date)}）より前です。日付を確認してください。`;
+}
+
+function updateMoveInDateWarning({ showStatus = false } = {}) {
+  const warning = moveInDateWarning();
+  const input = el("moveInDate");
+  if (input) {
+    input.classList.toggle("input-warning", Boolean(warning));
+    input.setCustomValidity(warning);
+  }
+  if (showStatus) {
+    el("status").textContent = warning || "入居開始日を更新しました。";
+  }
+  return warning;
+}
+
 function numberValue(id) {
   return Number(el(id).value || 0);
 }
@@ -959,6 +1017,7 @@ function resetToBlank() {
   state.csvRows = [];
   state.filteredCsvRows = [];
   el("csvPanel").hidden = true;
+  updateMoveInDateWarning();
   renderGuaranteeTargets();
   renderFeeEditor();
   renderUnknownRulesPanel();
@@ -986,12 +1045,12 @@ function loadData(data) {
   el("built").value = property.built || "";
   el("inquiry").value = property.inquiry || "";
   el("issueDate").value = dateForInput(settings.issueDate) || today();
-  el("moveInDate").value = dateForInput(property.moveIn);
+  el("moveInDate").value = "";
   el("freeRentStart").value = "";
   el("freeRentEnd").value = "";
   syncProrateFromMoveInDate();
   el("includeParking").checked = Boolean(settings.includeParking);
-  el("includeNextMonth").checked = Boolean(moveInDateParts()?.day >= 15);
+  el("includeNextMonth").checked = Boolean(settings.includeNextMonth);
   el("includeAcCleaning").checked = Boolean(settings.includeAcCleaning);
   el("includePetFee").checked = Boolean(settings.includePetFee);
   el("includeCorporateGuarantee").checked = Boolean(settings.includeCorporateGuarantee);
@@ -1022,6 +1081,7 @@ function loadData(data) {
     addExtraFee(result.fee);
   });
   syncDerivedFees();
+  updateMoveInDateWarning();
   renderGuaranteeTargets();
   renderFeeEditor();
   renderUnknownRulesPanel();
@@ -1556,6 +1616,7 @@ function renderEstimate() {
   const moveInParts = moveInDateParts();
   const freeRange = freeRentRange();
   const includeNextMonth = shouldIncludeNextMonthRent();
+  const moveInWarning = updateMoveInDateWarning();
   const rentRuleNote = moveInParts
     ? includeNextMonth
       ? "翌月分を初期費用に含める設定のため、翌月分の月額費用を見積に含めています。日割は家賃、共益費・管理費、駐車場のみ計算し、その他の月額費用は日割せず入居月分を満額で含めています。"
@@ -1564,6 +1625,7 @@ function renderEstimate() {
       ? "翌月分を初期費用に含める設定のため、翌月分の月額費用を見積に含めています。入居開始日が未入力のため、入居月の日割は計算していません。"
       : "";
   const notes = [
+    moveInWarning ? `<strong>警告: ${escapeHtml(moveInWarning)}</strong>` : "",
     rentRuleNote,
     freeRange ? "フリーレント期間に重なる賃料と共益費・管理費を控除しています。" : "",
     choiceFees.length ? `支払時期の選択が必要な項目があります（${escapeHtml(choiceFees.map((fee) => fee.label).join("、"))}）。要選択の項目は契約時候補として合計に含めています。退去時払いにする場合は、費用項目欄で支払時期を退去時に変更してください。` : "",
@@ -1909,6 +1971,7 @@ document.addEventListener("change", (event) => {
   }
   if (target.id === "moveInDate") {
     syncProrateFromMoveInDate();
+    updateMoveInDateWarning({ showStatus: true });
     renderEstimate();
     return;
   }
