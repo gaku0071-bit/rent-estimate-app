@@ -1,7 +1,7 @@
 物件候補リスト作成システム サーバー公開用フォルダ
 
 バージョン: 2026.07.05.1
-作成日: 2026-07-10T09:28:56.823Z
+作成日: 2026-07-11T10:15:00+09:00
 公開準備: OK
 想定URL: https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates
 導入ページ: https://gaku0071-bit.github.io/rent-estimate-app/

@@ -1,15 +1,16 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-05T02:24:25.622Z",
+  "publishedAt": "2026-07-11T10:15:00+09:00",
   "windows": {
     "version": "2026.07.05.1",
     "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.05.1.exe",
-    "sha256": "baabb64cc7347efaffccddb1b3ea111f07f1d1f093e1ca57f15f550ccdb820c8",
+    "sha256": "d95c4763bfb595c6478c8053459e1d7b077bebb46bb5d6a29f014d77e3cffc89",
     "packageType": "exe",
     "fileName": "property-list-automation-windows-2026.07.05.1.exe",
     "required": false,
     "notes": [
-      "Windows版インストーラー更新"
+      "Windows版いい生活キャッシュ日付判定を修正",
+      "Windows版インストーラーを再作成"
     ]
   },
   "mac": {
