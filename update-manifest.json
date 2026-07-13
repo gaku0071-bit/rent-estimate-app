@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-13T10:00:00+09:00",
+  "publishedAt": "2026-07-13T17:30:11+09:00",
   "windows": {
-    "version": "2026.07.13.2",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.13.2.exe",
-    "sha256": "46ec33448c42b9fa0123b9e807f4fac602bbbf9bf40128f042e34ffb3383363b",
+    "version": "2026.07.13.3",
+    "url": "https://github.com/gaku0071-bit/rent-estimate-app/releases/download/v2026.07.13.3/property-list-automation-windows-2026.07.13.3.exe",
+    "sha256": "f942cf46bfd61b66bba09397209e4ef7e5f0831c2584518e03cb4bb6cac4c81f",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.07.13.2.exe",
+    "fileName": "property-list-automation-windows-2026.07.13.3.exe",
     "required": false,
     "notes": [
-      "レオパレス物件を候補対象外に変更",
-      "除外理由を確認できるよう改善"
+      "Windows版の必須ファイル確認を修正",
+      "空き容量不足時の更新失敗を事前検知・復旧"
     ]
   },
   "mac": {
