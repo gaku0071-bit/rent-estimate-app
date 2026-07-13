@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-12T00:54:18+09:00",
+  "publishedAt": "2026-07-13T10:00:00+09:00",
   "windows": {
-    "version": "2026.07.05.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.05.1.exe",
-    "sha256": "e29501615b29cdab98202026a6b38e6dd6195561770217e6153953621b4e81ab",
+    "version": "2026.07.13.2",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.13.2.exe",
+    "sha256": "46ec33448c42b9fa0123b9e807f4fac602bbbf9bf40128f042e34ffb3383363b",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.07.05.1.exe",
+    "fileName": "property-list-automation-windows-2026.07.13.2.exe",
     "required": false,
     "notes": [
-      "Windows版いい生活キャッシュ日付判定を修正",
-      "Windows版インストーラーを再作成"
+      "レオパレス物件を候補対象外に変更",
+      "除外理由を確認できるよう改善"
     ]
   },
   "mac": {

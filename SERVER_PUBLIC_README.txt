@@ -1,6 +1,6 @@
 物件候補リスト作成システム サーバー公開用フォルダ
 
-バージョン: 2026.07.05.1
+バージョン: Windows 2026.07.13.2 / Mac 2026.07.05.1
 作成日: 2026-07-12T00:54:18+09:00
 公開準備: OK
 想定URL: https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates
@@ -22,3 +22,4 @@ manifest: update-manifest.json
 
 - update-manifest.json があるため、アップデート通知用として公開できます。
 - 実務データ、CSV、バックアップ、Chromeログイン情報は含めていません。
+- Mac版は `2026.07.05.1` のままです。Windows版のみ `2026.07.13.2` を公開しています。

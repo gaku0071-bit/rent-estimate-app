@@ -1,6 +1,7 @@
 87a1fed5d81585d4dae8f14f939c92f7bf4e4f87bd7f5d677255708d66f96b0a  downloads/property-list-automation-mac-2026.07.05.1.zip
 e29501615b29cdab98202026a6b38e6dd6195561770217e6153953621b4e81ab  downloads/property-list-automation-windows-2026.07.05.1.exe
+46ec33448c42b9fa0123b9e807f4fac602bbbf9bf40128f042e34ffb3383363b  downloads/property-list-automation-windows-2026.07.13.2.exe
 b6e39c641d54c686231293128575c2e4cf2ca2d99c72050694717918e8c5feb7  downloads/property-list-automation-windows-installer-source-2026.07.05.1.zip
 040bece07a81295959329fd1f9f782311fe7cc8e8ca4f8deda908884c1cb9d0f  downloads/property-list-automation-windows-portable-2026.07.05.1.zip
 7fca2fda13d881d7c59da0d512c82be3602de324b387dd3bc745267868e381c7  downloads/property-list-automation-windows-portable-debug-2026.07.05.1.zip
-031cbb6ef3310acd853524fa8d474edc0df46db61c9eb21776f1fd15eb425198  update-manifest.json
+983e421e3e8df6ed46e0d34b5a6d04f0d5e92d1964ad82bec99dcc4763b7e571  update-manifest.json
