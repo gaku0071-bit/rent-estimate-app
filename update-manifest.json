@@ -1,27 +1,32 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-13T17:30:11+09:00",
+  "publishedAt": "2026-07-14T10:00:00.000Z",
   "windows": {
-    "version": "2026.07.13.3",
-    "url": "https://github.com/gaku0071-bit/rent-estimate-app/releases/download/v2026.07.13.3/property-list-automation-windows-2026.07.13.3.exe",
-    "sha256": "f942cf46bfd61b66bba09397209e4ef7e5f0831c2584518e03cb4bb6cac4c81f",
+    "version": "2026.07.14.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.14.1.exe",
+    "sha256": "6627C46AAEFD4D763AC29DCEEDAE88CA7CB6E079E8AA7356D4973167C99DBA07",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.07.13.3.exe",
+    "fileName": "property-list-automation-windows-2026.07.14.1.exe",
     "required": false,
     "notes": [
-      "Windows版の必須ファイル確認を修正",
-      "空き容量不足時の更新失敗を事前検知・復旧"
+      "Chrome policy force-install support",
+      "Dedicated Chrome extension presence check"
     ]
   },
+  "extension": {
+    "id": "fnmkfpkhmnjhmkibiddnfoijigfmcoof",
+    "version": "0.3.0",
+    "updateUrl": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/extension-updates.xml",
+    "crxUrl": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-extension-0.3.0.crx",
+    "sha256": "1c63b0a9260cfe96c8061074d7ed961d2e4ac91309eb43ea409d191492e62cdd"
+  },
   "mac": {
-    "version": "2026.07.05.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-mac-2026.07.05.1.zip",
-    "sha256": "87a1fed5d81585d4dae8f14f939c92f7bf4e4f87bd7f5d677255708d66f96b0a",
+    "version": "2026.07.04.2",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-mac-2026.07.04.2.zip",
+    "sha256": "d5dcfa91a4abefcfc788eabffb7f3b91e58352c2e0ab8135ceaef0adf66c15f0",
     "packageType": "zip",
-    "fileName": "property-list-automation-mac-2026.07.05.1.zip",
-    "required": false,
-    "notes": [
-      "Mac版更新ZIP"
-    ]
+    "fileName": "property-list-automation-mac-2026.07.04.2.zip",
+    "required": false
   }
 }
+
