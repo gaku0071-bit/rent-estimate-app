@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-14T10:00:00.000Z",
+  "publishedAt": "2026-07-14T13:46:15Z",
   "windows": {
     "version": "2026.07.14.1",
     "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.14.1.exe",
@@ -21,12 +21,16 @@
     "sha256": "1c63b0a9260cfe96c8061074d7ed961d2e4ac91309eb43ea409d191492e62cdd"
   },
   "mac": {
-    "version": "2026.07.04.2",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-mac-2026.07.04.2.zip",
-    "sha256": "d5dcfa91a4abefcfc788eabffb7f3b91e58352c2e0ab8135ceaef0adf66c15f0",
+    "version": "2026.07.14.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-mac-2026.07.14.1.zip",
+    "sha256": "c176dda47b8f03cbd5d8fd0994cc513bed396c0e598010bac3cb5d6f87ebe8f8",
     "packageType": "zip",
-    "fileName": "property-list-automation-mac-2026.07.04.2.zip",
-    "required": false
+    "fileName": "property-list-automation-mac-2026.07.14.1.zip",
+    "required": false,
+    "notes": [
+      "Mac版アプリ本体更新",
+      "既存のChromeログイン状態と作業データを保持"
+    ]
   }
 }
 
