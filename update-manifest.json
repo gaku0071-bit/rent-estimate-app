@@ -1,16 +1,18 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-14T13:46:15Z",
+  "publishedAt": "2026-07-30T17:38:33Z",
   "windows": {
-    "version": "2026.07.14.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.14.1.exe",
-    "sha256": "6627C46AAEFD4D763AC29DCEEDAE88CA7CB6E079E8AA7356D4973167C99DBA07",
+    "version": "2026.07.30.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.30.1.exe",
+    "sha256": "9D12067CE9E5716B9773A2D4D69C70C6601EDB89B441CAB7585925770E549466",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.07.14.1.exe",
+    "fileName": "property-list-automation-windows-2026.07.30.1.exe",
     "required": false,
     "notes": [
-      "Chrome policy force-install support",
-      "Dedicated Chrome extension presence check"
+      "Startup eSeikatsu cache refresh and recovery",
+      "Queued RealPro search after cache completion",
+      "Unified operation status popup",
+      "Faster checkpointed RealPro detail verification"
     ]
   },
   "extension": {
@@ -33,4 +35,3 @@
     ]
   }
 }
-
