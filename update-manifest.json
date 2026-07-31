@@ -1,18 +1,17 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-30T17:38:33Z",
+  "publishedAt": "2026-07-31T03:07:36Z",
   "windows": {
-    "version": "2026.07.30.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.30.1.exe",
-    "sha256": "9D12067CE9E5716B9773A2D4D69C70C6601EDB89B441CAB7585925770E549466",
+    "version": "2026.07.31.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.31.1.exe",
+    "sha256": "45555EB3C3C0F8AB2C4D8B4CC78729303CDB77F46FCF4E65FA9FAB26448DFF0A",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.07.30.1.exe",
+    "fileName": "property-list-automation-windows-2026.07.31.1.exe",
     "required": false,
     "notes": [
-      "Startup eSeikatsu cache refresh and recovery",
-      "Queued RealPro search after cache completion",
-      "Unified operation status popup",
-      "Faster checkpointed RealPro detail verification"
+      "Fixed candidate result layout overflow on desktop and mobile",
+      "Separated candidate prospects from excluded and reference rows by default",
+      "Clarified candidate and reference counts in the manual review queue"
     ]
   },
   "extension": {
