@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-31T07:21:44Z",
+  "publishedAt": "2026-07-31T08:18:13Z",
   "windows": {
-    "version": "2026.07.31.4",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.31.4.exe",
-    "sha256": "FF5F633794FBE5530465D9D15C84EE6E366CCFA91E2D6D0FE45CE4AA39D2346D",
+    "version": "2026.07.31.5",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.31.5.exe",
+    "sha256": "08B9D643515D9DC1FB3F5AF6F68868EBD10B30118C1BA81C112129BAE27448A7",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.07.31.4.exe",
+    "fileName": "property-list-automation-windows-2026.07.31.5.exe",
     "required": false,
     "notes": [
-      "Unified system status and navigation in one bottom-right operation window",
-      "Removed the confirmation-points panel and legacy duplicate notifications",
-      "Kept retry and completion guidance visible with the next available action",
-      "Corrected the RealPro page-progress denominator"
+      "Reset stale RealPro candidates when the local date changes",
+      "Keep saved capture files while hiding old candidates",
+      "Complete the eSeikatsu refresh before guiding the user to today's RealPro search",
+      "Store RealPro-specific capture timestamps separately from eSeikatsu refresh time"
     ]
   },
   "extension": {
