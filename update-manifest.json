@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-31T03:15:07Z",
+  "publishedAt": "2026-07-31T03:21:56Z",
   "windows": {
-    "version": "2026.07.31.2",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.31.2.exe",
-    "sha256": "C5B3B1EC0958A2CD0470F85902335D2B67A93ED33CF2AA6065F1331090C9B364",
+    "version": "2026.07.31.3",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.31.3.exe",
+    "sha256": "F5568B6326D20A2B8B22E8379B08FC999FB3250072FBD695A58F069DE615E46E",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.07.31.2.exe",
+    "fileName": "property-list-automation-windows-2026.07.31.3.exe",
     "required": false,
     "notes": [
       "Fixed candidate result layout overflow on desktop and mobile",
       "Separated candidate prospects from excluded and reference rows by default",
       "Clarified candidate and reference counts in the manual review queue",
-      "Bypassed stale CDN cache during update checks"
+      "Used the GitHub Contents API to avoid stale update manifests"
     ]
   },
   "extension": {
