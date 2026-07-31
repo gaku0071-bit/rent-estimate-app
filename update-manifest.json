@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-31T03:21:56Z",
+  "publishedAt": "2026-07-31T07:21:44Z",
   "windows": {
-    "version": "2026.07.31.3",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.31.3.exe",
-    "sha256": "F5568B6326D20A2B8B22E8379B08FC999FB3250072FBD695A58F069DE615E46E",
+    "version": "2026.07.31.4",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.31.4.exe",
+    "sha256": "FF5F633794FBE5530465D9D15C84EE6E366CCFA91E2D6D0FE45CE4AA39D2346D",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.07.31.3.exe",
+    "fileName": "property-list-automation-windows-2026.07.31.4.exe",
     "required": false,
     "notes": [
-      "Fixed candidate result layout overflow on desktop and mobile",
-      "Separated candidate prospects from excluded and reference rows by default",
-      "Clarified candidate and reference counts in the manual review queue",
-      "Used the GitHub Contents API to avoid stale update manifests"
+      "Unified system status and navigation in one bottom-right operation window",
+      "Removed the confirmation-points panel and legacy duplicate notifications",
+      "Kept retry and completion guidance visible with the next available action",
+      "Corrected the RealPro page-progress denominator"
     ]
   },
   "extension": {
