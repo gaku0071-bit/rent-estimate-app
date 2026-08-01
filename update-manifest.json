@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-07-31T08:29:49Z",
+  "publishedAt": "2026-08-01T08:39:05Z",
   "windows": {
-    "version": "2026.07.31.6",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.07.31.6.exe",
-    "sha256": "84E20DF36F2EC0655238A6B0BD3E46C7344B40C3AEE3FA03B2F05DA87F196B97",
+    "version": "2026.08.01.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.08.01.1.exe",
+    "sha256": "144D848F248B2AC74E7729D1C940BF25B9197FF9F1442C43F0739D18A2FC39B0",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.07.31.6.exe",
+    "fileName": "property-list-automation-windows-2026.08.01.1.exe",
     "required": false,
     "notes": [
-      "Show a short actionable message when eSeikatsu login expires",
-      "Hide Python warnings, local paths, and tracebacks from the operation window",
-      "Keep technical error details in the browser console for diagnostics",
-      "Remove the invalid Python escape-sequence warning"
+      "Limit RealPro detail acquisition to four concurrent rooms",
+      "Automatically reduce concurrency to two or one when requests fail",
+      "Stop remaining detail requests when maintenance, HTTP 429, or HTTP 503 is detected",
+      "Add a short pause between detail batches to reduce repeated load"
     ]
   },
   "extension": {
