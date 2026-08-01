@@ -7,6 +7,7 @@ ff5f633794fbe5530465d9d15c84ee6e366ccfa91e2d6d0fe45ce4aa39d2346d  downloads/prop
 08b9d643515d9dc1fb3f5af6f68868ebd10b30118c1ba81c112129bae27448a7  downloads/property-list-automation-windows-2026.07.31.5.exe
 84e20df36f2ec0655238a6b0bd3e46c7344b40c3aee3fa03b2f05da87f196b97  downloads/property-list-automation-windows-2026.07.31.6.exe
 144d848f248b2ac74e7729d1c940bf25b9197ff9f1442c43f0739d18a2fc39b0  downloads/property-list-automation-windows-2026.08.01.1.exe
+7e45979585c313bc96269f3dc7de025898b23602d28a892848dedf4b850020c2  downloads/property-list-automation-windows-2026.08.01.2.exe
 1c63b0a9260cfe96c8061074d7ed961d2e4ac91309eb43ea409d191492e62cdd  downloads/property-list-automation-extension-0.3.0.crx
 f6e921840a2df1a440dd485e994ba21e2e1eb73756b338a25bebf06dfeec08e0  extension-updates.xml
 87a1fed5d81585d4dae8f14f939c92f7bf4e4f87bd7f5d677255708d66f96b0a  downloads/property-list-automation-mac-2026.07.05.1.zip

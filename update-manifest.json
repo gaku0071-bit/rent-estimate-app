@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-08-01T08:39:05Z",
+  "publishedAt": "2026-08-01T08:54:19Z",
   "windows": {
-    "version": "2026.08.01.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.08.01.1.exe",
-    "sha256": "144D848F248B2AC74E7729D1C940BF25B9197FF9F1442C43F0739D18A2FC39B0",
+    "version": "2026.08.01.2",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.08.01.2.exe",
+    "sha256": "7E45979585C313BC96269F3DC7DE025898B23602D28A892848DEDF4B850020C2",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.08.01.1.exe",
+    "fileName": "property-list-automation-windows-2026.08.01.2.exe",
     "required": false,
     "notes": [
-      "Limit RealPro detail acquisition to four concurrent rooms",
-      "Automatically reduce concurrency to two or one when requests fail",
-      "Stop remaining detail requests when maintenance, HTTP 429, or HTTP 503 is detected",
-      "Add a short pause between detail batches to reduce repeated load"
+      "Show the full local path after downloading a Windows installer",
+      "Add an Open download folder action to the bottom-right operation window",
+      "Use the app update folder as the single installer download location",
+      "Avoid creating a second browser download copy"
     ]
   },
   "extension": {
