@@ -10,7 +10,7 @@ from email.parser import BytesParser
 from email.policy import default
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import quote, unquote
 
 
 ROOT = Path(__file__).resolve().parent
@@ -1032,10 +1032,18 @@ class AppHandler(BaseHTTPRequestHandler):
             ".js": "application/javascript; charset=utf-8",
             ".json": "application/json; charset=utf-8",
             ".png": "image/png",
+            ".zip": "application/zip",
         }.get(path.suffix, "application/octet-stream")
         self.send_response(200)
         self.send_header("Content-Type", content_type)
-        if path.suffix in {".html", ".css", ".js", ".json"}:
+        self.send_header("Content-Length", str(path.stat().st_size))
+        if path.suffix == ".zip":
+            encoded_name = quote(path.name)
+            self.send_header(
+                "Content-Disposition",
+                f"attachment; filename=extension-update.zip; filename*=UTF-8''{encoded_name}",
+            )
+        if path.suffix in {".html", ".css", ".js", ".json", ".zip"}:
             self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(path.read_bytes())

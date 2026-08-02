@@ -7,7 +7,7 @@
     <meta name="theme-color" content="#0b6b6f" />
     <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=20260720-2" />
+    <link rel="stylesheet" href="styles.css?v=20260802-3" />
   </head>
   <body>
     <main class="app">
@@ -28,9 +28,23 @@
             </label>
             <button id="sampleButton" type="button">添付PDFの内容</button>
             <button id="resetButton" type="button">リセット</button>
-            <button id="printButton" type="button">A4印刷</button>
+            <button id="printButton" type="button">PDF・A4印刷</button>
           </div>
         </header>
+
+        <section id="extensionUpdatePanel" class="extension-update-panel" hidden aria-live="polite">
+          <div class="extension-update-copy">
+            <strong>拡張機能の更新があります</strong>
+            <p id="extensionUpdateMessage">最新版の拡張機能をダウンロードしてください。</p>
+            <small id="extensionUpdateVersions"></small>
+          </div>
+          <div class="extension-update-actions">
+            <a id="windowsUpdateDownload" class="download-button primary" href="リアプロ拡張機能_Windows更新セット.zip" download="リアプロ拡張機能_Windows更新セット.zip">Windows版をダウンロード</a>
+            <a id="macUpdateDownload" class="download-button" href="リアプロ拡張機能_Mac更新セット.zip" download="リアプロ拡張機能_Mac更新セット.zip">Mac版をダウンロード</a>
+            <button id="dismissExtensionUpdate" class="plain" type="button" aria-label="更新通知を閉じる">あとで</button>
+          </div>
+          <p class="extension-update-help">Windowsではダウンロードフォルダに保存されます。ZIPを展開して更新ファイルを実行し、Chromeの拡張機能画面で「再読み込み」を押してください。</p>
+        </section>
 
         <div id="status" class="status">PDFを読み込むと物件概要と費用が自動入力されます。</div>
 
@@ -79,12 +93,20 @@
           </div>
         </section>
 
-        <section class="panel">
+        <section class="panel phase2-panel">
           <div class="section-title">
             <div>
               <h2>保証会社費用の確認</h2>
               <p class="section-help">読み取り内容を確認・修正できます。月額保証料は初期費用に含まれません。</p>
             </div>
+          </div>
+          <div id="guaranteePlanChooser" class="guarantee-plan-chooser" hidden>
+            <label>利用する保証会社・プラン
+              <select id="guaranteePlanSelect">
+                <option value="">選択してください</option>
+              </select>
+            </label>
+            <p>複数候補がある場合、選択するまで保証料は見積へ反映しません。</p>
           </div>
           <div class="guarantee-settings-grid">
             <label>初回保証料の方式
@@ -106,6 +128,7 @@
             </label>
             <label>月額保証料（定額）<input id="monthlyGuaranteeFixed" type="number" min="0" step="1" value="0" /></label>
             <label>月額保証料（料率）<input id="monthlyGuaranteeRate" type="number" min="0" step="0.1" value="0" /></label>
+            <label>月額保証料の最低額<input id="monthlyGuaranteeMinimum" type="number" min="0" step="1" value="0" /></label>
           </div>
           <div class="guarantee-note">月額保証料は初期費用に含めず、月額費用欄だけに表示します。</div>
           <div id="guaranteeTargets" class="target-list"></div>
@@ -134,11 +157,11 @@
           </div>
         </section>
 
-        <section id="unknownRulesPanel" class="panel rules-panel" hidden>
+        <section id="unknownRulesPanel" class="panel rules-panel phase2-panel" hidden>
           <div class="section-title">
             <div>
               <h2>未登録項目の確認</h2>
-              <p class="section-help">PDFから拾った未登録の費用項目です。分類を保存すると、このブラウザでは次回から同じ扱いになります。</p>
+              <p class="section-help">リアプロ・PDFから拾った未登録の費用項目です。分類を保存すると、このブラウザでは次回から同じ扱いになります。</p>
             </div>
             <div class="rule-actions">
               <button id="exportRulesButton" type="button">追加ルールを書き出し</button>
@@ -168,7 +191,7 @@
       </aside>
     </main>
 
-    <script src="app.js?v=20260721-1"></script>
-    <script src="app-patch.js?v=20260721-1"></script>
+    <script src="app.js?v=20260802-3"></script>
+    <script src="app-patch.js?v=20260726-2"></script>
   </body>
 </html>

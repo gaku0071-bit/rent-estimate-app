@@ -117,6 +117,84 @@ button:hover,
   color: var(--muted);
 }
 
+.extension-update-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  border: 1px solid #d69b2d;
+  border-left: 5px solid #c98218;
+  border-radius: 8px;
+  background: #fff8e5;
+  padding: 14px 16px;
+  color: #53390e;
+}
+
+.extension-update-panel[hidden] {
+  display: none;
+}
+
+.extension-update-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.extension-update-copy strong {
+  font-size: 16px;
+}
+
+.extension-update-copy p,
+.extension-update-copy small,
+.extension-update-help {
+  line-height: 1.5;
+}
+
+.extension-update-copy p {
+  font-size: 13px;
+}
+
+.extension-update-copy small {
+  color: #725522;
+  font-size: 12px;
+}
+
+.extension-update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.download-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid #c98b22;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 12px;
+  color: #53390e;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.download-button.primary {
+  border-color: #0b6b6f;
+  background: #0b6b6f;
+  color: #fff;
+}
+
+.extension-update-help {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #725522;
+  font-size: 12px;
+}
+
 .panel {
   background: var(--paper);
   border: 1px solid var(--line);
@@ -128,6 +206,57 @@ button:hover,
 .review-panel {
   width: min(100%, 820px);
   margin-left: auto;
+}
+
+.phase2-panel {
+  width: min(100%, 960px);
+  margin-left: auto;
+}
+
+.guarantee-plan-chooser {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(220px, 1fr);
+  gap: 12px;
+  align-items: end;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 6px;
+  background: #f1f8f8;
+}
+
+.guarantee-plan-chooser[hidden] {
+  display: none;
+}
+
+.guarantee-plan-chooser.needs-selection {
+  border-color: #d69b2d;
+  border-left-color: #c98218;
+  background: #fff8e5;
+}
+
+.guarantee-plan-chooser label {
+  display: grid;
+  gap: 5px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.guarantee-plan-chooser select {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: #fff;
+}
+
+.guarantee-plan-chooser p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .guarantee-settings-grid {
@@ -750,6 +879,17 @@ table {
   min-width: 0;
 }
 
+.split-costs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+}
+
+.split-notes {
+  grid-column: 1 / -1;
+}
+
 th,
 td {
   border: 1px solid var(--line);
@@ -867,6 +1007,17 @@ th.amount {
 }
 
 @media (max-width: 760px) {
+  .extension-update-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .extension-update-actions {
+    justify-content: stretch;
+  }
+
+  .extension-update-actions > * {
+    flex: 1 1 180px;
+  }
   .workspace,
   .preview-wrap {
     padding: 14px;
@@ -890,18 +1041,45 @@ th.amount {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .guarantee-plan-chooser {
+    grid-template-columns: 1fr;
+  }
+
   .guarantee-review-grid {
     grid-template-columns: 1fr;
   }
 
   .fee-row {
-    grid-template-columns: minmax(120px, 1fr) 88px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 
-  .fee-row select,
-  .fee-row .optional-check,
+  .fee-row > * {
+    min-width: 0;
+  }
+
+  .fee-row > input:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .fee-row input,
+  .fee-row select {
+    width: 100%;
+  }
+
+  .fee-row .optional-check {
+    white-space: normal;
+  }
+
+  .fee-row .optional-check input {
+    width: auto;
+    min-height: auto;
+    padding: 0;
+  }
+
   .fee-row button {
-    grid-column: span 1;
+    grid-column: 2;
+    width: 34px;
+    justify-self: end;
   }
 
   .form-grid {
@@ -916,10 +1094,6 @@ th.amount {
     grid-template-columns: 1fr;
   }
 
-  .fee-row {
-    grid-template-columns: 1fr 84px 78px 84px 34px;
-  }
-
   .a4 {
     width: 100%;
     min-height: auto;
@@ -931,6 +1105,10 @@ th.amount {
   }
 
   .estimate-body {
+    grid-template-columns: 1fr;
+  }
+
+  .split-costs {
     grid-template-columns: 1fr;
   }
 
@@ -995,6 +1173,9 @@ th.amount {
   }
 
   .estimate-head {
+    display: grid;
+    grid-template-columns: 82mm minmax(0, 1fr) 34mm;
+    align-items: center;
     gap: 9px;
     padding-bottom: 5px;
     border-bottom-width: 2px;
@@ -1002,6 +1183,7 @@ th.amount {
 
   .estimate-head h2 {
     font-size: 21px;
+    text-align: center;
   }
 
   .brand-block {
@@ -1109,15 +1291,55 @@ th.amount {
   }
 
   .a4.compact-print {
-    padding: 7mm 8mm;
+    padding: 5mm 7mm;
+  }
+
+  .a4.compact-print .estimate-head {
+    grid-template-columns: 76mm minmax(0, 1fr) 32mm;
+    gap: 6px;
+    padding-bottom: 3px;
+  }
+
+  .a4.compact-print .estimate-body {
+    grid-template-columns: minmax(0, 2.2fr) minmax(62mm, 0.8fr);
+  }
+
+  .a4.compact-print .split-costs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
   }
 
   .a4.compact-print .estimate-head h2 {
-    font-size: 19px;
+    font-size: 18px;
+  }
+
+  .a4.compact-print .brand-block {
+    grid-template-columns: 28mm 1fr;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .a4.compact-print .store-logo {
+    width: 28mm;
+  }
+
+  .a4.compact-print .store-info {
+    font-size: 8.2px;
+    line-height: 1.18;
+  }
+
+  .a4.compact-print .store-info strong {
+    font-size: 9.2px;
+  }
+
+  .a4.compact-print .meta {
+    min-width: 0;
+    font-size: 9px;
+    line-height: 1.3;
   }
 
   .a4.compact-print .recipient {
-    margin: 5px 0;
+    margin: 3px 0;
     font-size: 14px;
   }
 
@@ -1128,22 +1350,26 @@ th.amount {
   }
 
   .a4.compact-print .estimate-total {
-    margin: 5px 0;
-    padding: 4px 7px;
+    margin: 3px 0;
+    padding: 3px 7px;
+  }
+
+  .a4.compact-print .estimate-total strong {
+    font-size: 20px;
   }
 
   .a4.compact-print table {
-    font-size: 9px;
-    line-height: 1.2;
+    font-size: 9.6px;
+    line-height: 1.22;
   }
 
   .a4.compact-print th,
   .a4.compact-print td {
-    padding: 2.2px 3px;
+    padding: 2.5px 3px;
   }
 
   .a4.compact-print .notes {
-    font-size: 8.2px;
-    line-height: 1.3;
+    font-size: 8.8px;
+    line-height: 1.32;
   }
 }

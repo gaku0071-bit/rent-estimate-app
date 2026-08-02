@@ -12,6 +12,22 @@ function amountNear(text, pattern) {
   return amounts.length ? moneyToInt(amounts.at(-1)) : 0;
 }
 
+function monthlyGuaranteeFixedAmount(text) {
+  const value = String(text || "").normalize("NFKC");
+  const patterns = [
+    /(?:月額保証料|月次保証料|月額保証委託料|月次保証委託料|毎月保証料|月々保証料)\s*[:：]?\s*((?:[\d,，]+|\d+(?:\.\d+)?\s*万)\s*円)/,
+    /(?:月額保証(?:料|委託料)|毎月保証料|月々保証料)[^。・\n\r※]{0,20}?((?:[\d,，]+|\d+(?:\.\d+)?\s*万)\s*円)/,
+  ];
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (match?.[1]) {
+      const amount = moneyToInt(match[1]);
+      if (amount) return amount;
+    }
+  }
+  return 0;
+}
+
 function guaranteeMinimumAmount(text) {
   const value = String(text || "");
   return amountNear(
@@ -31,26 +47,6 @@ function initialGuaranteeRate(text) {
       value.match(/(?:賃料合計|月額賃料|月額家賃|賃料等|家賃等)[^%\d]{0,30}(\d+(?:\.\d+)?)(?:%|パーセント)/)?.[1] ||
       0,
   );
-}
-
-function normalizeGuaranteeSettings(settings) {
-  const note = settings?.guaranteeNote || "";
-  const rate = initialGuaranteeRate(note);
-  const fixed = fixedGuaranteeAmount(note);
-  const minimum = guaranteeMinimumAmount(note) || Number(settings.guaranteeMinimum || 0);
-  const monthlyRate = Number(note.match(/(?:月額|月次|毎月|月々)[^。・\n\r%]{0,80}(\d+(?:\.\d+)?)\s*(?:%|パーセント)/)?.[1] || 0);
-  const monthlyFixed = amountNear(note, /(?:月額|月次|毎月|月々)[^。・\n\r%]{0,80}(?:[\d,，]+)\s*円/);
-  if (!rate && !fixed && !monthlyRate && !monthlyFixed) return settings;
-  return {
-    ...settings,
-    guaranteeMode: fixed ? "fixed" : rate ? "percent" : settings.guaranteeMode,
-    guaranteeRate: rate || Number(settings.guaranteeRate || 50),
-    guaranteeFixedAmount: fixed || Number(settings.guaranteeFixedAmount || 0),
-    guaranteeMinimum: minimum,
-    monthlyGuaranteeMode: monthlyRate ? "percent" : monthlyFixed ? "fixed" : settings.monthlyGuaranteeMode,
-    monthlyGuaranteeRate: monthlyRate || Number(settings.monthlyGuaranteeRate || 0),
-    monthlyGuaranteeFixed: monthlyFixed || Number(settings.monthlyGuaranteeFixed || 0),
-  };
 }
 
 function fixedGuaranteeAmount(text) {
