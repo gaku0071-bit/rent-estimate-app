@@ -1477,6 +1477,22 @@ function receiveExtensionStatus(event) {
   renderExtensionUpdateNotice();
 }
 
+function shouldAssumeLegacyDesktopExtension({
+  search = window.location.search,
+  platform = navigator.userAgentData?.platform || navigator.platform || "",
+  userAgent = navigator.userAgent || "",
+} = {}) {
+  const query = new URLSearchParams(search);
+  if (query.get("source") === "realpro-extension") return true;
+
+  const normalizedPlatform = String(platform);
+  const normalizedUserAgent = String(userAgent);
+  const isWindows = /win/i.test(normalizedPlatform) || /windows/i.test(normalizedUserAgent);
+  const isDesktopChrome = /(?:chrome|crios|edg|opr)\//i.test(normalizedUserAgent)
+    && !/(?:android|iphone|ipad|ipod|mobile)/i.test(normalizedUserAgent);
+  return isWindows && isDesktopChrome;
+}
+
 function applicableFee(fee) {
   // Only optional fees may be excluded by the per-item checkbox. A normal
   // monthly fee must remain visible even if an older transfer left the flag off.
@@ -2756,7 +2772,7 @@ resetToBlank();
 checkExtensionUpdate();
 window.postMessage({ type: "RENT_ESTIMATE_APP_READY" }, window.location.origin);
 
-if (new URLSearchParams(window.location.search).get("source") === "realpro-extension") {
+if (shouldAssumeLegacyDesktopExtension()) {
   window.setTimeout(() => {
     if (!extensionUpdateState.currentVersion) {
       renderExtensionUpdateNotice({ assumeOldExtension: true });
