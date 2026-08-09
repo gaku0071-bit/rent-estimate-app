@@ -1,18 +1,17 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-08-01T08:54:19Z",
+  "publishedAt": "2026-08-08T11:50:07.404Z",
   "windows": {
-    "version": "2026.08.01.2",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.08.01.2.exe",
-    "sha256": "7E45979585C313BC96269F3DC7DE025898B23602D28A892848DEDF4B850020C2",
+    "version": "2026.08.08.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.08.08.1.exe",
+    "sha256": "0fa4797ec50d61c46c5fd4eed4d991ea80a0c8baf9e4481f0914c91838f8f706",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.08.01.2.exe",
+    "fileName": "property-list-automation-windows-2026.08.08.1.exe",
     "required": false,
     "notes": [
-      "Show the full local path after downloading a Windows installer",
-      "Add an Open download folder action to the bottom-right operation window",
-      "Use the app update folder as the single installer download location",
-      "Avoid creating a second browser download copy"
+      "Windows版インストーラー更新",
+      "更新EXEをChromeで開かずアプリ内へ直接保存",
+      "画面更新後も保存済みEXEの場所を右下ナビへ再表示"
     ]
   },
   "extension": {
@@ -23,15 +22,14 @@
     "sha256": "1c63b0a9260cfe96c8061074d7ed961d2e4ac91309eb43ea409d191492e62cdd"
   },
   "mac": {
-    "version": "2026.07.14.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-mac-2026.07.14.1.zip",
-    "sha256": "c176dda47b8f03cbd5d8fd0994cc513bed396c0e598010bac3cb5d6f87ebe8f8",
+    "version": "2026.08.08.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-mac-2026.08.08.1.zip",
+    "sha256": "3dfb93a5f51b3e5b0911563e2e829671947c09615132524ccc90bcc52932613e",
     "packageType": "zip",
-    "fileName": "property-list-automation-mac-2026.07.14.1.zip",
+    "fileName": "property-list-automation-mac-2026.08.08.1.zip",
     "required": false,
     "notes": [
-      "Mac版アプリ本体更新",
-      "既存のChromeログイン状態と作業データを保持"
+      "Mac版更新ZIP"
     ]
   }
 }
