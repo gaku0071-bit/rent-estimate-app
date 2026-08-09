@@ -1,35 +1,36 @@
 {
-  "schemaVersion": 1,
-  "publishedAt": "2026-08-08T11:50:07.404Z",
-  "windows": {
-    "version": "2026.08.08.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.08.08.1.exe",
-    "sha256": "0fa4797ec50d61c46c5fd4eed4d991ea80a0c8baf9e4481f0914c91838f8f706",
-    "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.08.08.1.exe",
-    "required": false,
-    "notes": [
-      "Windows版インストーラー更新",
-      "更新EXEをChromeで開かずアプリ内へ直接保存",
-      "画面更新後も保存済みEXEの場所を右下ナビへ再表示"
-    ]
-  },
-  "extension": {
-    "id": "fnmkfpkhmnjhmkibiddnfoijigfmcoof",
-    "version": "0.3.0",
-    "updateUrl": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/extension-updates.xml",
-    "crxUrl": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-extension-0.3.0.crx",
-    "sha256": "1c63b0a9260cfe96c8061074d7ed961d2e4ac91309eb43ea409d191492e62cdd"
-  },
-  "mac": {
-    "version": "2026.08.08.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-mac-2026.08.08.1.zip",
-    "sha256": "3dfb93a5f51b3e5b0911563e2e829671947c09615132524ccc90bcc52932613e",
-    "packageType": "zip",
-    "fileName": "property-list-automation-mac-2026.08.08.1.zip",
-    "required": false,
-    "notes": [
-      "Mac版更新ZIP"
-    ]
-  }
+    "schemaVersion":  1,
+    "publishedAt":  "2026-08-09T01:42:45.808Z",
+    "windows":  {
+                    "version":  "2026.08.09.2",
+                    "url":  "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.08.09.2.exe",
+                    "sha256":  "53ef459500473f47158c92b995a21bb9f9312137c98408802664d35a320d2bd2",
+                    "packageType":  "exe",
+                    "fileName":  "property-list-automation-windows-2026.08.09.2.exe",
+                    "required":  false,
+                    "notes":  [
+                                  "Windows版インストーラー更新",
+                                  "更新EXEをアプリ内へ保存してSHA-256を再確認",
+                                  "更新ボタンから自動インストールし、完了後にシステムを再起動",
+                                  "コード署名なしのため、PCによってはWindowsの許可操作が必要"
+                              ]
+                },
+    "mac":  {
+                "version":  "2026.08.09.2",
+                "url":  "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-mac-2026.08.09.2.zip",
+                "sha256":  "fbb5c365fbd3951ebe534c6f5275b1274bf3ba3403b1ec75e679bccfe07b8994",
+                "packageType":  "zip",
+                "fileName":  "property-list-automation-mac-2026.08.09.2.zip",
+                "required":  false,
+                "notes":  [
+                              "Mac版更新ZIP"
+                          ]
+            },
+    "extension":  {
+                      "id":  "fnmkfpkhmnjhmkibiddnfoijigfmcoof",
+                      "version":  "0.3.0",
+                      "updateUrl":  "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/extension-updates.xml",
+                      "crxUrl":  "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-extension-0.3.0.crx",
+                      "sha256":  "1c63b0a9260cfe96c8061074d7ed961d2e4ac91309eb43ea409d191492e62cdd"
+                  }
 }
