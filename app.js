@@ -490,6 +490,7 @@ function inferPaymentTiming(text, fallback = "initial") {
 const guaranteeMonthlyWords = /月額|月次|毎月|月々|毎月継続|継続保証|口座振替|口振|引落|決済|収納代行|支払手数料/;
 const guaranteeInitialWords = /初回|契約時|保証委託料|初回保証料|初回保証委託料|新規契約時/;
 const guaranteeMoneyPatternSource = "(?:[\\d,，]+\\s*円|\\d+(?:\\.\\d+)?\\s*万(?:\\s*円)?)";
+const guaranteeMinimumKeywordSource = "(?:最低保証(?:委託)?料?(?!\\s*(?:なし|無し|無|不要))|最低額(?!\\s*(?:なし|無し|無|不要))|最低(?!保証|額)(?!\\s*(?:なし|無し|無|不要))|下限(?!\\s*(?:なし|無し|無|不要)))";
 
 function firstRate(value, patterns) {
   for (const pattern of patterns) {
@@ -502,12 +503,13 @@ function firstRate(value, patterns) {
 function guaranteeInitialMinimum(value, initialRate) {
   let minimum = 0;
   const patterns = [
-    new RegExp(`(?:最低保証料|最低|下限)[^。・\\n\\r]{0,32}?${guaranteeMoneyPatternSource}`, "g"),
-    new RegExp(`${guaranteeMoneyPatternSource}[^。・\\n\\r]{0,32}?(?:最低保証料|最低|下限)`, "g"),
+    new RegExp(`${guaranteeMinimumKeywordSource}[^。・\\n\\r]{0,32}?${guaranteeMoneyPatternSource}`, "g"),
+    new RegExp(`${guaranteeMoneyPatternSource}[^。・\\n\\r]{0,32}?${guaranteeMinimumKeywordSource}`, "g"),
   ];
   for (const pattern of patterns) {
     for (const match of value.matchAll(pattern)) {
-      const amount = moneyToInt(match[0]);
+      const amountToken = match[0].match(new RegExp(guaranteeMoneyPatternSource))?.[0] || "";
+      const amount = moneyToInt(amountToken);
       if (!amount) continue;
       const local = value.slice(Math.max(0, match.index - 48), match.index + match[0].length + 48);
       const before = value.slice(Math.max(0, match.index - 120), match.index);
@@ -712,7 +714,8 @@ function normalizeGuaranteeSettings(settings) {
   if (!terms.initialRate && !terms.fixed && !terms.monthlyRate && !terms.monthlyFixed) return settings;
   const has = (key) => Object.prototype.hasOwnProperty.call(settings || {}, key);
   const hasSelectedPlan = Array.isArray(settings?.guaranteeAlternatives) && settings.guaranteeAlternatives.length > 1;
-  const useExplicit = (key) => hasSelectedPlan && has(key);
+  const hasAuthoritativeParserPayload = Number(settings?.guaranteeParserVersion || 0) >= 3;
+  const useExplicit = (key) => (hasSelectedPlan || hasAuthoritativeParserPayload) && has(key);
   const payloadMonthlyRate = Number(settings?.monthlyGuaranteeRate || 0);
   const duplicatedInitialRate = !authoritativeMonthlyRate
     && !terms.monthlyRate

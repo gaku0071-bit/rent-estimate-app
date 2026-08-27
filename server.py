@@ -437,6 +437,7 @@ def normalize_rate_text(text: str) -> str:
 GUARANTEE_MONTHLY_WORDS = r"月額|月次|毎月|月々|毎月継続|継続保証|口座振替|口振|引落|決済|収納代行|支払手数料"
 GUARANTEE_INITIAL_WORDS = r"初回|契約時|保証委託料|初回保証料|初回保証委託料|新規契約時"
 GUARANTEE_MONEY_PATTERN = r"(?:[\d,，]+\s*円|\d+(?:\.\d+)?\s*万(?:\s*円)?)"
+GUARANTEE_MINIMUM_KEYWORD_PATTERN = r"(?:最低保証(?:委託)?料?(?!\s*(?:なし|無し|無|不要))|最低額(?!\s*(?:なし|無し|無|不要))|最低(?!保証|額)(?!\s*(?:なし|無し|無|不要))|下限(?!\s*(?:なし|無し|無|不要)))"
 
 
 def guarantee_money_to_int(value: str | None) -> int:
@@ -461,8 +462,8 @@ def _first_rate(patterns: list[str], text: str) -> float:
 def _guarantee_initial_minimum(text: str, initial_rate: float) -> int:
     minimum = 0
     patterns = [
-        rf"(?:最低保証料|最低|下限)[^。・\n\r]{{0,32}}?{GUARANTEE_MONEY_PATTERN}",
-        rf"{GUARANTEE_MONEY_PATTERN}[^。・\n\r]{{0,32}}?(?:最低保証料|最低|下限)",
+        rf"{GUARANTEE_MINIMUM_KEYWORD_PATTERN}[^。・\n\r]{{0,32}}?{GUARANTEE_MONEY_PATTERN}",
+        rf"{GUARANTEE_MONEY_PATTERN}[^。・\n\r]{{0,32}}?{GUARANTEE_MINIMUM_KEYWORD_PATTERN}",
     ]
     for pattern in patterns:
         for match in re.finditer(pattern, text, re.MULTILINE | re.DOTALL):
