@@ -2740,11 +2740,18 @@ el("resetButton").addEventListener("click", () => {
   el("status").textContent = "入力内容を空の状態へ戻しました。";
 });
 
-el("addFeeButton").addEventListener("click", () => {
-  state.fees.push({ id: `custom-${Date.now()}`, label: "追加項目", amount: 0, type: "initial", timing: "initial", guaranteeTarget: false, noProrate: false, noInitialEstimate: false, derived: false });
+function addManualFee(type = "initial") {
+  state.fees.push({ id: `custom-${Date.now()}-${state.fees.length}`, label: "追加項目", amount: 0, type, timing: "initial", includeInEstimate: type !== "optional", guaranteeTarget: false, noProrate: false, noInitialEstimate: false, derived: false });
   renderGuaranteeTargets();
   renderFeeEditor();
-});
+  renderEstimate();
+  const labelInput = el("feeEditor").lastElementChild?.querySelector('[data-field="label"]');
+  labelInput?.focus();
+  labelInput?.select();
+}
+
+el("addFeeButton").addEventListener("click", () => addManualFee());
+el("addOptionalFeeButton").addEventListener("click", () => addManualFee("optional"));
 
 el("csvSearch").addEventListener("input", renderCsvSelector);
 
