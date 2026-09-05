@@ -809,6 +809,7 @@ function normalizeFeeType(type) {
 }
 
 function optionalDefaultIncluded(key, settings) {
+  if (typeof settings.feeInclusions?.[key] === "boolean") return settings.feeInclusions[key];
   if (key === "parkingFee") return Boolean(settings.includeParking);
   if (key === "acCleaningFee") return Boolean(settings.includeAcCleaning);
   return false;
