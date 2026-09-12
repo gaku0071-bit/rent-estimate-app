@@ -2218,7 +2218,7 @@ function renderEstimate() {
     optionalMonthly.length ? `任意の月額費用（${escapeHtml(optionalMonthly.map((fee) => fee.label).join("、"))}）は見積に反映していません。利用する場合は別途かかります。` : "",
     optionalFeeRows.length ? `任意項目（${escapeHtml(optionalFeeRows.map((fee) => fee.label).join("、"))}）は見積に反映していません。利用する場合は別途かかります。` : "",
     el("includeFreeRentNote").checked && freeRent ? `<strong>${escapeHtml(freeRent)}</strong>` : "",
-    "本見積はリアプロおよび物件資料の記載内容をもとにした概算です。申込条件、入居日、管理会社確認により金額が変動する場合があります。",
+    "本見積は、物件の募集情報をもとに作成した概算です。申込条件、入居日、管理会社の確認結果により、清掃料などの支払時期や初期費用の金額が変わる場合があります。",
     guaranteeNote ? `保証会社条件: ${escapeHtml(guaranteeNote)}` : "",
   ].filter(Boolean);
 
