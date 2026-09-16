@@ -620,8 +620,26 @@ function guaranteeRenewalAmount(value) {
   return 0;
 }
 
+function guaranteeRenewalRateTerms(value) {
+  const rateSource = "(?:賃料総額|賃総額|賃料合計|月額賃料等|月額家賃等|総賃料|賃料等|家賃等|家賃総額|総額)";
+  const patterns = [
+    new RegExp(`(\\d+)\\s*年(?:毎|ごと)(?:に)?[^。・\\n\\r%]{0,80}?${rateSource}(?:の)?\\s*(\\d+(?:\\.\\d+)?)\\s*(?:%|パーセント)`),
+    new RegExp(`(?:毎年|年毎|年ごと)(?:に)?[^。・\\n\\r%]{0,80}?${rateSource}(?:の)?\\s*(\\d+(?:\\.\\d+)?)\\s*(?:%|パーセント)`),
+    new RegExp(`${rateSource}(?:の)?\\s*(\\d+(?:\\.\\d+)?)\\s*(?:%|パーセント)[^。・\\n\\r]{0,80}?(\\d+)\\s*年(?:毎|ごと)`),
+  ];
+  for (let index = 0; index < patterns.length; index += 1) {
+    const match = value.match(patterns[index]);
+    if (!match) continue;
+    const intervalYears = index === 1 ? 1 : Number(index === 0 ? match[1] : match[2]);
+    const rate = Number(index === 0 ? match[2] : match[1]);
+    if (intervalYears > 0 && rate > 0 && rate <= 100) return { rate, intervalYears };
+  }
+  return { rate: 0, intervalYears: 0 };
+}
+
 function guaranteeMonthlyRateFromText(value) {
   const patterns = [
+    /(?:毎月|月額|月次)\s*(?:の)?(?:総支払額|支払総額|賃料合計|賃料総額|賃総額|家賃総額|総賃料|家賃等|賃料等)[^。・\n\r%]{0,24}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
     /(?:更新保証料|継続保証料|更新料)[^。・\n\r%]{0,80}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)\s*(?:[/／]\s*)?(?:毎月払い|月払い|毎月|月額)/,
     /(?:月額保証料|月次保証料|月額保証委託料|月次保証料|月額保証委託事務手数料|集送金手数料|月額手数料|月額事務手数料|毎月手数料|月々手数料|毎月支払手数料|\[毎月\]保証料|毎月保証料|月々保証料|毎月継続保証料|継続保証料|支払手数料|収納代行手数料|決済手数料|月々決済手数料|毎月決済手数料|月額\s*\/)[^。・\n\r%]{0,100}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
     /(?:月額|毎月|月々)(?!賃料|家賃|賃料等|家賃等)[^。・\n\r]{0,40}?(?:保証|手数料|賃料合計|賃料総額|総賃料)[^。・\n\r%]{0,60}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
@@ -644,6 +662,7 @@ function guaranteeMonthlyRateFromText(value) {
 function parseGuaranteeTerms(text) {
   const value = normalizeRateText(String(text || "").normalize("NFKC").replace(/％/g, "%")).replace(/[ \t]+/g, " ");
   let initialRate = firstRate(value, [
+    /(?:賃料総額|賃総額|賃料合計|総賃料|家賃総額)(?:の)?\s*(\d+(?:\.\d+)?)\s*(?:%|パーセント)\s*[、，,]\s*(?:毎月|月額|月次|月々)/,
     /(?:初回保証料|初回保証委託料|初回保証委託事務手数料|基本保証料|基本保証委託料|契約時保証料|初回保証会社保証料|保証委託料|初回|契約時)[^。・\n\r/%]{0,80}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
     /(?:初回|契約時)[^。・\n\r]{0,80}?(?:月額賃料等|月額家賃等|賃料合計|賃料総額|総賃料|賃料等|家賃等)[^。・\n\r%]{0,40}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)/,
     /(?:月額賃料等|月額家賃等|賃料合計|賃料総額|総賃料|賃料等|家賃等)[^。・\n\r%]{0,40}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)[^。・\n\r]{0,40}?(?:初回|契約時)/,
@@ -661,6 +680,7 @@ function parseGuaranteeTerms(text) {
   const safeMonthlyRate = new RegExp(`初回\\s*\\d+(?:\\.\\d+)?\\s*(?:%|パーセント)[^。\\n\\r]{0,40}?(?:月|月額)\\s*${guaranteeMoneyPatternSource}`).test(value) ? 0 : monthlyRate;
   const monthlyFixedExtra = guaranteeMonthlyFixedExtra(value, safeMonthlyRate);
   const renewalAmount = guaranteeRenewalAmount(value);
+  const renewalRateTerms = guaranteeRenewalRateTerms(value);
   return {
     fixed,
     initialRate,
@@ -670,6 +690,17 @@ function parseGuaranteeTerms(text) {
     monthlyFixed: guaranteeMonthlyFixed(value, safeMonthlyRate),
     monthlyFixedExtra,
     renewalAmount,
+    renewalRate: renewalRateTerms.rate,
+    renewalIntervalYears: renewalRateTerms.intervalYears,
+    renewalPeriod: renewalRateTerms.intervalYears === 1
+      ? "annual"
+      : renewalRateTerms.intervalYears === 2
+        ? "biennial"
+        : renewalRateTerms.intervalYears
+          ? `${renewalRateTerms.intervalYears}years`
+          : renewalAmount
+            ? "annual"
+            : "none",
     note: value.trim(),
   };
 }
@@ -707,11 +738,14 @@ function normalizeGuaranteeSettings(settings) {
       monthlyGuaranteeFixed: authoritativeMonthlyRate ? 0 : Number(settings?.monthlyGuaranteeFixed || 0),
       monthlyGuaranteeFixedExtra: Number(settings?.monthlyGuaranteeFixedExtra || 0),
       guaranteeRenewalAmount: Number(settings?.guaranteeRenewalAmount || 0),
+      guaranteeRenewalRate: Number(settings?.guaranteeRenewalRate || 0),
+      guaranteeRenewalIntervalYears: Number(settings?.guaranteeRenewalIntervalYears || 0),
+      guaranteeRenewalPeriod: settings?.guaranteeRenewalPeriod || "none",
       guaranteeNeedsChoice: false,
     };
   }
   const terms = parseGuaranteeTerms(note);
-  if (!terms.initialRate && !terms.fixed && !terms.monthlyRate && !terms.monthlyFixed) return settings;
+  if (!terms.initialRate && !terms.fixed && !terms.monthlyRate && !terms.monthlyFixed && !terms.renewalRate && !terms.renewalAmount) return settings;
   const has = (key) => Object.prototype.hasOwnProperty.call(settings || {}, key);
   const hasSelectedPlan = Array.isArray(settings?.guaranteeAlternatives) && settings.guaranteeAlternatives.length > 1;
   const hasAuthoritativeParserPayload = Number(settings?.guaranteeParserVersion || 0) >= 3;
@@ -721,7 +755,7 @@ function normalizeGuaranteeSettings(settings) {
     && !terms.monthlyRate
     && payloadMonthlyRate > 0
     && payloadMonthlyRate === terms.initialRate
-    && Boolean(terms.monthlyFixed || terms.monthlyFixedExtra || terms.renewalAmount);
+    && Boolean(terms.monthlyFixed || terms.monthlyFixedExtra || terms.renewalAmount || terms.renewalRate);
   const explicitMonthlyRate = authoritativeMonthlyRate || (duplicatedInitialRate ? 0 : payloadMonthlyRate);
   // A stale extension payload can carry an annual renewal amount as the old
   // monthly fixed value. When the note explicitly contains a monthly rate,
@@ -756,6 +790,15 @@ function normalizeGuaranteeSettings(settings) {
     guaranteeRenewalAmount: useExplicit("guaranteeRenewalAmount")
       ? Number(settings.guaranteeRenewalAmount || 0)
       : terms.renewalAmount || Number(settings?.guaranteeRenewalAmount || 0),
+    guaranteeRenewalRate: useExplicit("guaranteeRenewalRate")
+      ? Number(settings.guaranteeRenewalRate || 0)
+      : terms.renewalRate || Number(settings?.guaranteeRenewalRate || 0),
+    guaranteeRenewalIntervalYears: useExplicit("guaranteeRenewalIntervalYears")
+      ? Number(settings.guaranteeRenewalIntervalYears || 0)
+      : terms.renewalIntervalYears || Number(settings?.guaranteeRenewalIntervalYears || 0),
+    guaranteeRenewalPeriod: useExplicit("guaranteeRenewalPeriod")
+      ? settings.guaranteeRenewalPeriod || "none"
+      : terms.renewalPeriod || settings?.guaranteeRenewalPeriod || "none",
   };
 }
 
@@ -1144,8 +1187,14 @@ function applyCsvEnhancement(item) {
   const guaranteeTerms = parseGuaranteeTerms(notes);
   if (guaranteeTerms.renewalAmount) {
     state.settings.guaranteeRenewalAmount = guaranteeTerms.renewalAmount;
-    state.settings.guaranteeRenewalPeriod = "annual";
+    state.settings.guaranteeRenewalPeriod = guaranteeTerms.renewalPeriod || "annual";
     applied.push("保証更新料");
+  }
+  if (guaranteeTerms.renewalRate) {
+    state.settings.guaranteeRenewalRate = guaranteeTerms.renewalRate;
+    state.settings.guaranteeRenewalIntervalYears = guaranteeTerms.renewalIntervalYears;
+    state.settings.guaranteeRenewalPeriod = guaranteeTerms.renewalPeriod;
+    applied.push("保証更新料率");
   }
   const fixedGuarantee = guaranteeTerms.fixed;
   if (fixedGuarantee) {
@@ -1578,6 +1627,9 @@ function applyGuaranteeAlternative(index) {
     monthlyGuaranteeFixed: monthlyFixed,
     monthlyGuaranteeFixedExtra: monthlyFixedExtra,
     guaranteeRenewalAmount: Number(plan.renewalAmount || 0),
+    guaranteeRenewalRate: Number(plan.renewalRate || 0),
+    guaranteeRenewalIntervalYears: Number(plan.renewalIntervalYears || 0),
+    guaranteeRenewalPeriod: plan.renewalPeriod || "none",
     guaranteeWarnings: (state.settings?.guaranteeWarnings || []).filter((warning) => !/複数|選択/.test(String(warning))),
   };
   syncGuaranteeSettingsInputs();
@@ -2139,7 +2191,22 @@ function renderGuaranteeTargets() {
         + ` = ${yen.format(monthlyAmount)}`
       : "なし";
   const renewalAmount = Number(settings.guaranteeRenewalAmount || 0);
-  const hasRenewal = renewalAmount > 0 || /更新料|年間更新料|年次保証料|年間保証料|更新保証料/.test(sourceText);
+  const renewalRate = Number(settings.guaranteeRenewalRate || 0);
+  const renewalIntervalYears = Number(settings.guaranteeRenewalIntervalYears || 0);
+  const renewalTiming = renewalIntervalYears === 1
+    ? "毎年"
+    : renewalIntervalYears > 1
+      ? `${renewalIntervalYears}年ごと`
+      : "更新時";
+  const renewalCalculatedAmount = renewalRate
+    ? Math.round(guaranteeBaseTotal() * (renewalRate / 100))
+    : 0;
+  const renewalSummary = renewalAmount
+    ? `${renewalTiming} 定額 ${yen.format(renewalAmount)}`
+    : renewalRate
+      ? `${renewalTiming} ${renewalRate}% × 対象 ${yen.format(guaranteeBaseTotal())} = ${yen.format(renewalCalculatedAmount)}`
+      : "";
+  const hasRenewal = renewalAmount > 0 || renewalRate > 0 || /更新料|年間更新料|年次保証料|年間保証料|更新保証料/.test(sourceText);
   renderGuaranteePlanChooser();
   wrap.innerHTML = `
     ${corporateMessage ? `<div class="timing-notice corporate-guarantee-notice">${escapeHtml(corporateMessage)}</div>` : ""}
@@ -2150,7 +2217,7 @@ function renderGuaranteeTargets() {
       <div class="guarantee-review-grid">
         <div><span>初回保証料</span><strong>${escapeHtml(initialSummary)} = ${yen.format(guaranteeAmount())}</strong></div>
         <div><span>月額保証料</span><strong>${escapeHtml(monthlySummary)}</strong><small>初期費用には含めません</small></div>
-        <div><span>更新料・年額</span><strong>${renewalAmount ? yen.format(renewalAmount) : hasRenewal ? "原文に記載あり" : "記載なし"}</strong><small>初回・月額保証料とは別扱い</small></div>
+        <div><span>更新保証料</span><strong>${renewalSummary || (hasRenewal ? "原文に記載あり" : "記載なし")}</strong><small>初回・月額保証料とは別扱い</small></div>
       </div>
       ${warnings.length ? `<div class="guarantee-review-warnings"><strong>確認が必要です</strong>${warnings.map((warning) => `<div>・${escapeHtml(warning)}</div>`).join("")}</div>` : ""}
       ${sourceText ? `<details class="guarantee-source"><summary>読み取り元の保証会社欄を表示</summary><div>${escapeHtml(sourceText)}</div></details>` : ""}
