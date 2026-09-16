@@ -18,7 +18,7 @@
             <h1>賃貸初期費用見積</h1>
           </div>
           <div class="actions">
-            <label class="upload">
+            <label class="upload" hidden>
               <input id="pdfInput" type="file" accept="application/pdf" />
               PDF読込
             </label>
@@ -26,7 +26,7 @@
               <input id="csvInput" type="file" accept=".csv,text/csv" />
               CSV読込
             </label>
-            <button id="sampleButton" type="button">添付PDFの内容</button>
+            <button id="sampleButton" type="button" hidden>添付PDFの内容</button>
             <button id="resetButton" type="button">リセット</button>
             <button id="printButton" type="button">PDF・A4印刷</button>
           </div>
@@ -46,7 +46,7 @@
           <p class="extension-update-help">Windowsではダウンロードフォルダに保存されます。ZIPを展開して更新ファイルを実行し、Chromeの拡張機能画面で「再読み込み」を押してください。</p>
         </section>
 
-        <div id="status" class="status">PDFを読み込むと物件概要と費用が自動入力されます。</div>
+        <div id="status" class="status">リアプロの物件詳細から見積を作成できます。</div>
 
         <section id="csvPanel" class="panel csv-panel" hidden>
           <div class="section-title">
@@ -162,7 +162,7 @@
           <div class="section-title">
             <div>
               <h2>未登録項目の確認</h2>
-              <p class="section-help">リアプロ・PDFから拾った未登録の費用項目です。分類を保存すると、このブラウザでは次回から同じ扱いになります。</p>
+              <p class="section-help">リアプロから拾った未登録の費用項目です。分類を保存すると、このブラウザでは次回から同じ扱いになります。</p>
             </div>
             <div class="rule-actions">
               <button id="exportRulesButton" type="button">追加ルールを書き出し</button>
