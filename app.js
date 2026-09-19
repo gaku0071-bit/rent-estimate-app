@@ -1924,6 +1924,7 @@ function freeRentDeductionRows() {
           timing: "initial",
           sourceId: fee.id,
           rowKind: "discount",
+          costPeriod: period.label === "翌月" ? "nextMonth" : "moveIn",
         };
       })
       .filter((row) => row.amount !== 0),
@@ -2005,6 +2006,27 @@ function estimateRows() {
     .sort((a, b) => estimateRowOrder(a) - estimateRowOrder(b));
 }
 
+function initialCostGroupKey(fee) {
+  if (fee.rowKind === "nextMonth" || fee.costPeriod === "nextMonth") return "nextMonth";
+  if (["prorate", "monthlyFull", "discount"].includes(fee.rowKind) || (
+    !fee.rowKind && (fee.timing === "monthly" || ["monthly", "optionalParking", "optionalMonthly"].includes(fee.type))
+  )) return "moveIn";
+  return "contract";
+}
+
+function initialCostGroups(rows) {
+  const groups = [
+    { key: "moveIn", title: "入居月費用", rows: [] },
+    { key: "nextMonth", title: "翌月費用", rows: [] },
+    { key: "contract", title: "その他の契約時費用", rows: [] },
+  ];
+  rows.forEach((fee) => groups.find((group) => group.key === initialCostGroupKey(fee)).rows.push(fee));
+  return groups.filter((group) => group.rows.length).map((group) => ({
+    ...group,
+    total: group.rows.reduce((sum, fee) => sum + Number(fee.amount || 0), 0),
+  }));
+}
+
 function total() {
   return estimateRows().reduce((sum, fee) => sum + Number(fee.amount || 0), 0);
 }
@@ -2071,7 +2093,7 @@ function summaryFeeLinesForShare(rows, emptyText) {
   return rows.map((fee) => `・${fee.label}: ${plainAmount(fee.amount)}`);
 }
 
-function buildShareText({ kind, rows, monthlyRows, optionalRows: optionalFeeRows = [], exitRows, property, notes }) {
+function buildShareText({ kind, rows, initialGroups, monthlyRows, optionalRows: optionalFeeRows = [], exitRows, property, notes }) {
   const lines = [
     "【賃貸初期費用のお見積り】",
     recipientDisplayName(),
@@ -2085,7 +2107,13 @@ function buildShareText({ kind, rows, monthlyRows, optionalRows: optionalFeeRows
     shareLine("見積区分", kind),
     "",
     `■ 初期費用合計: ${plainAmount(total())}`,
-    ...feeLinesForShare(rows, "・初期費用項目はありません"),
+    ...(rows.length
+      ? initialGroups.flatMap((group, index) => [
+        ...(index ? [""] : []),
+        `${group.title} 小計: ${plainAmount(group.total)}`,
+        ...feeLinesForShare(group.rows, ""),
+      ])
+      : ["・初期費用項目はありません"]),
     ...(optionalFeeRows.length ? ["", "■ 任意項目（未反映）", ...summaryFeeLinesForShare(optionalFeeRows, "・任意項目はありません")] : []),
     "",
     `■ 月額費用合計: ${plainAmount(monthlySummaryTotal())}`,
@@ -2243,6 +2271,8 @@ function renderEstimate() {
   syncDerivedFees();
   const kind = state.estimateType === "personal" ? "個人宛" : "法人宛";
   const rows = estimateRows();
+  const initialGroups = initialCostGroups(rows);
+  const orderedInitialRows = initialGroups.flatMap((group) => group.rows);
   const monthlyRows = monthlySummaryRows();
   const optionalMonthly = optionalMonthlyRows();
   const optionalFeeRows = optionalRows();
@@ -2250,6 +2280,7 @@ function renderEstimate() {
   const remarks = (state.remarks || []).filter((fee) => fee?.label && Number(fee.amount || 0));
   const outputRowCount = rows.length + monthlyRows.length + optionalMonthly.length + optionalFeeRows.length + exitRows.length + remarks.length;
   const splitInitialRows = rows.length > 18;
+  const initialMidpoint = Math.ceil(orderedInitialRows.length / 2);
   const estimateEl = el("estimate");
   const property = {
     title: textValue("propertyTitle"),
@@ -2324,8 +2355,13 @@ function renderEstimate() {
     <div class="estimate-body">
       <section class="main-costs ${splitInitialRows ? "split-costs" : ""}">
         ${splitInitialRows
-          ? [rows.slice(0, Math.ceil(rows.length / 2)), rows.slice(Math.ceil(rows.length / 2))].map(estimateCostTable).join("")
-          : estimateCostTable(rows)}
+          ? [0, initialMidpoint].map((start, index) => estimateCostTable(
+            orderedInitialRows.slice(start, index === 0 ? initialMidpoint : undefined),
+            initialGroups,
+            orderedInitialRows,
+            start,
+          )).join("")
+          : estimateCostTable(orderedInitialRows, initialGroups, orderedInitialRows)}
         ${splitInitialRows ? estimateNotes(notes, "split-notes") : ""}
       </section>
       <aside class="side-costs">
@@ -2392,17 +2428,24 @@ function renderEstimate() {
       </aside>
     </div>
   `;
-  renderShareText({ kind, rows, monthlyRows, optionalRows: [...optionalMonthly, ...optionalFeeRows], exitRows, property, notes });
+  renderShareText({ kind, rows, initialGroups, monthlyRows, optionalRows: [...optionalMonthly, ...optionalFeeRows], exitRows, property, notes });
 }
 
-function estimateCostTable(rows) {
+function estimateCostTable(rows, groups, allRows, startIndex = 0) {
   return `
     <table>
       <thead>
         <tr><th>項目</th><th>区分</th><th>支払時期</th><th class="amount">金額</th></tr>
       </thead>
       <tbody>
-        ${rows.map((fee) => `<tr class="${fee.timing === "moveout" ? "moveout-row" : ""} ${fee.timing === "choice" ? "choice-row" : ""}"><td>${escapeHtml(fee.label)}</td><td>${feeKindLabel(fee.type)}</td><td>${timingLabel(fee.timing)}</td><td class="amount">${yen.format(Number(fee.amount || 0))}</td></tr>`).join("")}
+        ${rows.map((fee, index) => {
+          const key = initialCostGroupKey(fee);
+          const globalIndex = startIndex + index;
+          const startsGroup = index === 0 || initialCostGroupKey(rows[index - 1]) !== key;
+          const continued = globalIndex > 0 && initialCostGroupKey(allRows[globalIndex - 1]) === key;
+          const group = groups.find((item) => item.key === key);
+          return `${startsGroup ? `<tr class="cost-group-row" data-cost-group="${key}"><th scope="rowgroup" colspan="3">${group.title}${continued ? "（続き）" : ""}</th><td class="amount">${continued ? "" : `小計 ${yen.format(group.total)}`}</td></tr>` : ""}<tr class="${fee.timing === "moveout" ? "moveout-row" : ""} ${fee.timing === "choice" ? "choice-row" : ""}"><td>${escapeHtml(fee.label)}</td><td>${feeKindLabel(fee.type)}</td><td>${timingLabel(fee.timing)}</td><td class="amount">${yen.format(Number(fee.amount || 0))}</td></tr>`;
+        }).join("")}
       </tbody>
     </table>
   `;

@@ -912,6 +912,22 @@ th.amount {
   white-space: nowrap;
 }
 
+.cost-group-row th,
+.cost-group-row td {
+  background: #eaf1f0;
+  color: var(--ink);
+  border-top: 2px solid var(--accent);
+  font-weight: 700;
+}
+
+.cost-group-row th {
+  font-size: 11px;
+}
+
+.cost-group-row .amount {
+  font-size: 10px;
+}
+
 .moveout-row td {
   color: var(--muted);
   background: #fafafa;
@@ -1269,6 +1285,11 @@ th.amount {
     padding: 3.4px 4.5px;
   }
 
+  .cost-group-row th,
+  .cost-group-row td {
+    padding: 3.4px 4.5px;
+  }
+
   .summary-box {
     margin-bottom: 4px;
   }
@@ -1370,6 +1391,12 @@ th.amount {
   .a4.compact-print th,
   .a4.compact-print td {
     padding: 2.5px 3px;
+  }
+
+  .a4.compact-print .cost-group-row th,
+  .a4.compact-print .cost-group-row td {
+    padding: 2.5px 3px;
+    font-size: 9.6px;
   }
 
   .a4.compact-print .notes {
