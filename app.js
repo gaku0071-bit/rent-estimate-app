@@ -1957,7 +1957,7 @@ function monthlyFullRows() {
     }));
 }
 
-function estimateRowOrder(row) {
+function estimateRowOrder(row, includeKind = true) {
   const id = row.sourceId || row.id;
   const kind = row.rowKind || "base";
   const baseOrder = {
@@ -1990,7 +1990,7 @@ function estimateRowOrder(row) {
     monthlyFull: 20,
     discount: 25,
   };
-  return (baseOrder[id] ?? 500) + (kindOffset[kind] ?? 0);
+  return (baseOrder[id] ?? 500) + (includeKind ? kindOffset[kind] ?? 0 : 0);
 }
 
 function estimateRows() {
@@ -2015,12 +2015,17 @@ function initialCostGroupKey(fee) {
 }
 
 function initialCostGroups(rows) {
+  const feePositions = new Map(state.fees.map((fee, index) => [fee.id, index]));
   const groups = [
     { key: "moveIn", title: "入居月費用", rows: [] },
     { key: "nextMonth", title: "翌月費用", rows: [] },
     { key: "contract", title: "その他の契約時費用", rows: [] },
   ];
   rows.forEach((fee) => groups.find((group) => group.key === initialCostGroupKey(fee)).rows.push(fee));
+  groups.filter((group) => group.key !== "contract").forEach((group) => group.rows.sort((a, b) =>
+    estimateRowOrder(a, false) - estimateRowOrder(b, false) ||
+    (feePositions.get(a.sourceId || a.id) ?? Infinity) - (feePositions.get(b.sourceId || b.id) ?? Infinity),
+  ));
   return groups.filter((group) => group.rows.length).map((group) => ({
     ...group,
     total: group.rows.reduce((sum, fee) => sum + Number(fee.amount || 0), 0),
