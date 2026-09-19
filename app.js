@@ -1858,6 +1858,7 @@ function proratableMonthlyFee(fee) {
 }
 
 function skipProration(fee) {
+  if (fee.id === "parkingFee") return false;
   return Boolean(fee.noProrate) || !proratableMonthlyFee(fee);
 }
 
@@ -2745,7 +2746,7 @@ document.addEventListener("change", (event) => {
     if (target.dataset.field === "type" && target.value === "monthly") {
       fee.includeInEstimate = true;
       fee.timing = "monthly";
-      fee.noProrate = true;
+      fee.noProrate = !proratableMonthlyFee(fee);
       fee.noInitialEstimate = false;
     } else if (target.dataset.field === "type" && target.value === "optional") {
       fee.includeInEstimate = false;
