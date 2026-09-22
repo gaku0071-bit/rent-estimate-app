@@ -83,7 +83,7 @@ const feeDefinitions = [
   ["ペット消臭料", "deodorizingFee", "optional", false, "moveout"],
   ["ペット関連費用", "petFee", "optional", false, "initial"],
   ["エコジョーズ水落費用", "waterDrainFee", "initial", false, "moveout"],
-  ["駐車場", "parkingFee", "optional", false, "monthly"],
+  ["駐車場", "parkingFee", "optional", true, "monthly"],
 ];
 
 const USER_RULES_STORAGE_KEY = "rentEstimateUserFeeRules";
@@ -1676,10 +1676,9 @@ function corporateGuaranteeMessage() {
 }
 
 function guaranteeCandidate(fee) {
-  return fee.id !== "monthlyGuaranteeFee" && (
-    ["monthly", "optionalParking", "optionalMonthly"].includes(fee.type) ||
-    (fee.type === "optional" && fee.timing === "monthly")
-  );
+  if (fee.id === "monthlyGuaranteeFee") return false;
+  if (fee.id === "parkingFee") return fee.timing === "monthly";
+  return fee.type === "monthly" && fee.timing === "monthly";
 }
 
 function guaranteeBaseRows() {
