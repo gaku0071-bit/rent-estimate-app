@@ -1,0 +1,16 @@
+{
+  "version": "2026.09.24.1",
+  "readyToPublish": true,
+  "publicRoot": "C:\\Users\\comee\\AppData\\Local\\PropertyListAutomation\\dist\\update-server-public",
+  "siteUrl": "https://example.com",
+  "pageUrl": "https://example.com/index.html",
+  "manifest": "update-manifest.json",
+  "qaGuide": "qa-loop.html",
+  "downloads": [
+    "downloads/property-list-automation-mac-2026.09.24.1.zip",
+    "downloads/property-list-automation-windows-2026.09.24.1.exe",
+    "downloads/property-list-automation-windows-installer-source-2026.09.24.1.zip",
+    "downloads/property-list-automation-windows-portable-2026.09.24.1.zip"
+  ],
+  "createdAt": "2026-09-24T03:17:01.779Z"
+}

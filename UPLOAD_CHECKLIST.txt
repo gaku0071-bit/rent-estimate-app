@@ -1,0 +1,12 @@
+アップロード前チェックリスト
+
+□ downloads フォルダがある
+□ Mac ZIPが downloads にある
+□ Windows exeが必要な場合は downloads にある
+□ update-manifest.json がある
+□ checksums.txt がある
+□ index.html がある
+□ サーバーにアップロードした
+□ https://example.com/index.html を開ける
+□ https://example.com/update-manifest.json を開ける
+□ MacまたはWindowsで更新通知が出る
