@@ -1,18 +1,20 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-09-24T03:16:59.488Z",
+  "publishedAt": "2026-09-29T03:04:59.236Z",
   "windows": {
-    "version": "2026.09.24.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.09.24.1.exe",
-    "sha256": "5958d9f8355f3d7b4a19051fa8b4492be16dab5bb3836b6eecc0efb59809643f",
+    "version": "2026.09.29.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.09.29.1.exe",
+    "sha256": "2fc5f4598042ff2296a8ad15981a6a23739711198d2a76958f4f9ce3b25bd9c8",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.09.24.1.exe",
+    "fileName": "property-list-automation-windows-2026.09.29.1.exe",
     "required": false,
     "notes": [
-      "Windows版インストーラー更新",
-      "更新EXEをアプリ内へ保存してSHA-256を再確認",
-      "更新ボタンから自動インストールし、完了後にシステムを再起動",
-      "コード署名なしのため、PCによってはWindowsの許可操作が必要"
+      "レオパレス・ジェイワンを部屋ごとの管理会社で判定",
+      "同じ建物でも別管理会社は通常判定、レオパレス建物で管理会社未取得は詳細未確認として保留",
+      "現PCの候補作成・取得・照合・履歴・工程表示・右下ナビゲーションを配布版へ反映",
+      "開発中のリアプロ→いい生活登録・上書き連動機能は含みません",
+      "取得データ・CSV・履歴・専用Chromeのログイン情報を保持して上書き更新",
+      "コード署名なしのため、Windowsの許可操作が必要な場合があります"
     ]
   },
   "mac": {

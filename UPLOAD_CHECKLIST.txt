@@ -1,12 +1,12 @@
-アップロード前チェックリスト
+Windows 2026.09.29.1 配布チェック
 
-□ downloads フォルダがある
-□ Mac ZIPが downloads にある
-□ Windows exeが必要な場合は downloads にある
-□ update-manifest.json がある
-□ checksums.txt がある
-□ index.html がある
-□ サーバーにアップロードした
-□ https://example.com/index.html を開ける
-□ https://example.com/update-manifest.json を開ける
-□ MacまたはWindowsで更新通知が出る
+- EXE・portable ZIP・installer-source ZIPを生成済み
+- レオパレス・ジェイワンの管理会社別候補判定テスト: 合格
+- CSV出力・基本テスト: 合格
+- 同梱Node.js/Pythonでの起動: 合格
+- 旧バージョンからの更新通知・実EXEの保存・SHA-256照合: 合格
+- SHA-256不一致ファイルの拒否: 合格
+- 自動インストール開始前の準備（dry-run）: 合格
+- EXEの実インストール・別PC実機での取得: 未確認
+- GitHub公開後、manifest・EXE・チェックサムを公開URLから再確認する
+- 未確認項目を合格または100点として扱わない
