@@ -1,5 +1,5 @@
 {
-  "version": "2026.09.30.1",
+  "version": "2026.09.30.2",
   "readyToPublish": true,
   "siteUrl": "https://github.com/gaku0071-bit/rent-estimate-app/tree/property-list-updates",
   "pageUrl": "https://github.com/gaku0071-bit/rent-estimate-app/tree/property-list-updates/index.html",
@@ -7,12 +7,12 @@
   "qaGuide": "qa-loop.html",
   "downloads": [
     "downloads/property-list-automation-mac-2026.09.24.1.zip",
-    "downloads/property-list-automation-windows-2026.09.30.1.exe",
-    "downloads/property-list-automation-windows-portable-2026.09.30.1.zip",
-    "downloads/property-list-automation-windows-installer-source-2026.09.30.1.zip"
+    "downloads/property-list-automation-windows-2026.09.30.2.exe",
+    "downloads/property-list-automation-windows-portable-2026.09.30.2.zip",
+    "downloads/property-list-automation-windows-installer-source-2026.09.30.2.zip"
   ],
-  "createdAt": "2026-09-30T10:01:18.747Z",
-  "windowsVersion": "2026.09.30.1",
+  "createdAt": "2026-09-30T11:18:41.190Z",
+  "windowsVersion": "2026.09.30.2",
   "macVersion": "2026.09.24.1",
   "otherPcInstallationTest": "not-tested"
 }

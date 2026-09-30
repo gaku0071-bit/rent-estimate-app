@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-09-30T10:01:18.747Z",
+  "publishedAt": "2026-09-30T11:18:41.190Z",
   "windows": {
-    "version": "2026.09.30.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.09.30.1.exe",
-    "sha256": "fb35b1560225149b6bd477fd155746b1ee62e3ca2897267701c11dfc75b6b8e4",
+    "version": "2026.09.30.2",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.09.30.2.exe",
+    "sha256": "93f4d973d477a51159baf6afc2a397ebb42a1ebaeb14611f934736ae6a43b953",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.09.30.1.exe",
+    "fileName": "property-list-automation-windows-2026.09.30.2.exe",
     "required": false,
     "notes": [
-      "リアプロ検索時、リアプロタブがない場合は新しい専用Chromeタブを作り、システムタブを上書きしません",
-      "既存リアプロタブを再利用し、作成したタブのIDとURLを確認できない場合は安全に停止します",
-      "2026.09.29.1までの候補作成・取得・照合機能を維持します",
+      "リアプロ詳細確認中の再読み込みをタブIDとURLで確認し、番号のずれによる誤操作を防止します",
+      "Chrome通信側でもシステムタブを外部ページへ置き換える操作を禁止します",
+      "2026.09.30.1までの候補作成・取得・照合機能を維持します",
       "開発中のリアプロ→いい生活登録・上書き連動機能は含みません",
       "取得データ・CSV・履歴・専用Chromeのログイン情報を保持して上書き更新",
       "コード署名なしのため、Windowsの許可操作が必要な場合があります"
