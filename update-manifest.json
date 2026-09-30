@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-09-29T03:04:59.236Z",
+  "publishedAt": "2026-09-30T10:01:18.747Z",
   "windows": {
-    "version": "2026.09.29.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.09.29.1.exe",
-    "sha256": "2fc5f4598042ff2296a8ad15981a6a23739711198d2a76958f4f9ce3b25bd9c8",
+    "version": "2026.09.30.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.09.30.1.exe",
+    "sha256": "fb35b1560225149b6bd477fd155746b1ee62e3ca2897267701c11dfc75b6b8e4",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.09.29.1.exe",
+    "fileName": "property-list-automation-windows-2026.09.30.1.exe",
     "required": false,
     "notes": [
-      "レオパレス・ジェイワンを部屋ごとの管理会社で判定",
-      "同じ建物でも別管理会社は通常判定、レオパレス建物で管理会社未取得は詳細未確認として保留",
-      "現PCの候補作成・取得・照合・履歴・工程表示・右下ナビゲーションを配布版へ反映",
+      "リアプロ検索時、リアプロタブがない場合は新しい専用Chromeタブを作り、システムタブを上書きしません",
+      "既存リアプロタブを再利用し、作成したタブのIDとURLを確認できない場合は安全に停止します",
+      "2026.09.29.1までの候補作成・取得・照合機能を維持します",
       "開発中のリアプロ→いい生活登録・上書き連動機能は含みません",
       "取得データ・CSV・履歴・専用Chromeのログイン情報を保持して上書き更新",
       "コード署名なしのため、Windowsの許可操作が必要な場合があります"
