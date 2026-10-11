@@ -28,7 +28,7 @@ c8511b646c8a365de0aa8eb8b02ee7bfa8f2b747cd2d00a5a79b7e51ac34edf7  downloads/prop
 5958d9f8355f3d7b4a19051fa8b4492be16dab5bb3836b6eecc0efb59809643f  downloads/property-list-automation-windows-2026.09.24.1.exe
 90933a192e63b16a2bfd80a7aefea7197b4b091e0d7a8d4b911d38438af668fa  downloads/property-list-automation-windows-installer-source-2026.09.24.1.zip
 73bf4b67606cfc56972155036536436fb94fa48a3c6bb4cb4ca6671ba2aed0e3  downloads/property-list-automation-windows-portable-2026.09.24.1.zip
-60b14590a8fce92b437baa33433dfadec7fab2e458fed2f0046b23b9081b58d2  update-manifest.json
+5ef2770c4c12ce5537e52c0632be94d13f781005502a911a66e29ec968c4ac89  update-manifest.json
 2fc5f4598042ff2296a8ad15981a6a23739711198d2a76958f4f9ce3b25bd9c8  downloads/property-list-automation-windows-2026.09.29.1.exe
 6931dd00559bb9a7419bde7cf95a7e931dacf59557ea67a26f64bedb9a760793  downloads/property-list-automation-windows-portable-2026.09.29.1.zip
 28ba3d5360d101918e3b86de881aa78c11e4e127f15bd9eda8250b84885fd730  downloads/property-list-automation-windows-installer-source-2026.09.29.1.zip
@@ -38,3 +38,6 @@ fb35b1560225149b6bd477fd155746b1ee62e3ca2897267701c11dfc75b6b8e4  downloads/prop
 93f4d973d477a51159baf6afc2a397ebb42a1ebaeb14611f934736ae6a43b953  downloads/property-list-automation-windows-2026.09.30.2.exe
 0cd6625d4204bdf96e2687453d58d768623ed1638b575f4f9fe08e4351da7094  downloads/property-list-automation-windows-portable-2026.09.30.2.zip
 e1a67d986a5343e38da526ef060c55043424afe2aa5d9b4af70d0b3cce5bb3d9  downloads/property-list-automation-windows-installer-source-2026.09.30.2.zip
+b417b3b0845f10b6c9c2e39a17db8b4e1ae94dc0e85f72e5ae5e5db7a84f93ef  downloads/property-list-automation-windows-2026.10.11.1.exe
+d449e169d2f8891ab75f8a65f66487d891ecd6eabcc299983088809936d0e6b7  downloads/property-list-automation-windows-portable-2026.10.11.1.zip
+f6004b6ad52221974b80cf5f10caea98c8aa16cb929afceb3d9c3e1e32b6d105  downloads/property-list-automation-windows-installer-source-2026.10.11.1.zip
