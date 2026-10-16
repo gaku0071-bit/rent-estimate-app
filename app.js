@@ -593,6 +593,19 @@ function guaranteeMonthlyFixedExtra(value, monthlyRate) {
   }, 0);
 }
 
+function monthlyFixedExtraWithoutDuplicate(value, monthlyFixed, monthlyFixedExtra) {
+  if (!monthlyFixed || monthlyFixed !== monthlyFixedExtra) return monthlyFixedExtra;
+  const hasIncludedExtraFee = String(value || "").split(/[。\n\r]/).some(
+    (clause) => /(?:月額保証料|月次保証料|月額保証委託料|月次保証委託料|毎月保証料|月々保証料)/.test(clause)
+      && /(?:月額手数料|月額事務手数料|支払手数料|集送金手数料|集金代行|収納代行|決済手数料|口座振替|口振|引落)/.test(clause)
+      && /(?:含む|込み|込)/.test(clause),
+  );
+  if (hasIncludedExtraFee) return 0;
+  const matchingAmounts = [...String(value || "").matchAll(new RegExp(guaranteeMoneyPatternSource, "g"))]
+    .filter((match) => moneyToInt(match[0]) === monthlyFixedExtra);
+  return matchingAmounts.length === 1 ? 0 : monthlyFixedExtra;
+}
+
 function guaranteeRenewalAmount(value) {
   const barePattern = /(?:年間更新料|年更新料|年更新|年次更新|更新時|年間保証料|更新保証料|更新料)\s*[:：]?\s*((?:[1-9]\d{0,2}(?:,\d{3})+)|(?:[1-9]\d{3,5}))(?![\d.%])/g;
   for (const bareAmount of value.matchAll(barePattern)) {
@@ -678,7 +691,12 @@ function parseGuaranteeTerms(text) {
   const fixed = guaranteeFixedInitial(value, initialRate);
   const monthlyRate = guaranteeMonthlyRateFromText(value);
   const safeMonthlyRate = new RegExp(`初回\\s*\\d+(?:\\.\\d+)?\\s*(?:%|パーセント)[^。\\n\\r]{0,40}?(?:月|月額)\\s*${guaranteeMoneyPatternSource}`).test(value) ? 0 : monthlyRate;
-  const monthlyFixedExtra = guaranteeMonthlyFixedExtra(value, safeMonthlyRate);
+  const monthlyFixed = guaranteeMonthlyFixed(value, safeMonthlyRate);
+  const monthlyFixedExtra = monthlyFixedExtraWithoutDuplicate(
+    value,
+    monthlyFixed,
+    guaranteeMonthlyFixedExtra(value, safeMonthlyRate),
+  );
   const renewalAmount = guaranteeRenewalAmount(value);
   const renewalRateTerms = guaranteeRenewalRateTerms(value);
   return {
@@ -687,7 +705,7 @@ function parseGuaranteeTerms(text) {
     initialMinimum: guaranteeInitialMinimum(value, initialRate),
     monthlyRate: safeMonthlyRate,
     monthlyMinimum: guaranteeMonthlyMinimum(value, safeMonthlyRate),
-    monthlyFixed: guaranteeMonthlyFixed(value, safeMonthlyRate),
+    monthlyFixed,
     monthlyFixedExtra,
     renewalAmount,
     renewalRate: renewalRateTerms.rate,
@@ -724,6 +742,12 @@ function normalizeGuaranteeSettings(settings) {
     normalizeRateText(String(note || "").normalize("NFKC").replace(/％/g, "%"))
       .match(/(?:更新保証料|継続保証料|更新料)[^。・\n\r%]{0,80}?(\d+(?:\.\d+)?)\s*(?:%|パーセント)\s*(?:[/／]\s*)?(?:毎月払い|月払い|毎月|月額)/)?.[1] || 0,
   );
+  const selectedMonthlyFixed = authoritativeMonthlyRate ? 0 : Number(settings?.monthlyGuaranteeFixed || 0);
+  const selectedMonthlyFixedExtra = monthlyFixedExtraWithoutDuplicate(
+    note,
+    selectedMonthlyFixed,
+    Number(settings?.monthlyGuaranteeFixedExtra || 0),
+  );
   if (selectedLabel) {
     return {
       ...settings,
@@ -735,8 +759,8 @@ function normalizeGuaranteeSettings(settings) {
       monthlyGuaranteeMode: authoritativeMonthlyRate ? "percent" : settings?.monthlyGuaranteeMode || "none",
       monthlyGuaranteeRate: authoritativeMonthlyRate || Number(settings?.monthlyGuaranteeRate || 0),
       monthlyGuaranteeMinimum: Number(settings?.monthlyGuaranteeMinimum || 0),
-      monthlyGuaranteeFixed: authoritativeMonthlyRate ? 0 : Number(settings?.monthlyGuaranteeFixed || 0),
-      monthlyGuaranteeFixedExtra: Number(settings?.monthlyGuaranteeFixedExtra || 0),
+      monthlyGuaranteeFixed: selectedMonthlyFixed,
+      monthlyGuaranteeFixedExtra: selectedMonthlyFixedExtra,
       guaranteeRenewalAmount: Number(settings?.guaranteeRenewalAmount || 0),
       guaranteeRenewalRate: Number(settings?.guaranteeRenewalRate || 0),
       guaranteeRenewalIntervalYears: Number(settings?.guaranteeRenewalIntervalYears || 0),
@@ -763,6 +787,16 @@ function normalizeGuaranteeSettings(settings) {
   // The extension has already parsed the selected guarantee plan. Prefer its
   // explicit monthly rate over a second, less-contextual text parse here.
   const monthlyRateWins = Boolean(explicitMonthlyRate || terms.monthlyRate);
+  const normalizedMonthlyFixed = monthlyRateWins
+    ? 0
+    : useExplicit("monthlyGuaranteeFixed") ? Number(settings.monthlyGuaranteeFixed || 0) : terms.monthlyFixed || 0;
+  const normalizedMonthlyFixedExtra = monthlyFixedExtraWithoutDuplicate(
+    note,
+    normalizedMonthlyFixed,
+    useExplicit("monthlyGuaranteeFixedExtra")
+      ? Number(settings.monthlyGuaranteeFixedExtra || 0)
+      : terms.monthlyFixedExtra || 0,
+  );
   return {
     ...settings,
     guaranteeNote: settings?.guaranteeNote || settings?.guaranteeSourceText || "",
@@ -781,12 +815,8 @@ function normalizeGuaranteeSettings(settings) {
     monthlyGuaranteeMinimum: useExplicit("monthlyGuaranteeMinimum")
       ? Number(settings.monthlyGuaranteeMinimum || 0)
       : terms.monthlyMinimum || Number(settings?.monthlyGuaranteeMinimum || 0),
-    monthlyGuaranteeFixed: monthlyRateWins
-      ? 0
-      : useExplicit("monthlyGuaranteeFixed") ? Number(settings.monthlyGuaranteeFixed || 0) : terms.monthlyFixed || 0,
-    monthlyGuaranteeFixedExtra: useExplicit("monthlyGuaranteeFixedExtra")
-      ? Number(settings.monthlyGuaranteeFixedExtra || 0)
-      : terms.monthlyFixedExtra || 0,
+    monthlyGuaranteeFixed: normalizedMonthlyFixed,
+    monthlyGuaranteeFixedExtra: normalizedMonthlyFixedExtra,
     guaranteeRenewalAmount: useExplicit("guaranteeRenewalAmount")
       ? Number(settings.guaranteeRenewalAmount || 0)
       : terms.renewalAmount || Number(settings?.guaranteeRenewalAmount || 0),

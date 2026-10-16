@@ -524,18 +524,36 @@ def _guarantee_monthly_fixed(text: str, monthly_rate: float) -> int:
 
 
 def _guarantee_monthly_fixed_extra(text: str, monthly_rate: float) -> int:
-    if monthly_rate:
-        direct_pattern = rf"(?:月額手数料|月額事務手数料|支払手数料|集送金手数料|収納代行手数料|決済手数料|口座振替(?:サービス)?(?:利用)?料|口振(?:サービス)?(?:利用)?料|引落(?:サービス)?(?:利用)?料)[^。・\n\r%]{{0,80}}?({GUARANTEE_MONEY_PATTERN})"
-        direct_amount = sum(
-            guarantee_money_to_int(match.group(1))
-            for match in re.finditer(direct_pattern, text, re.MULTILINE | re.DOTALL)
-        )
-        if direct_amount:
-            return direct_amount
+    direct_pattern = rf"(?:月額手数料|月額事務手数料|支払手数料|集送金手数料|収納代行手数料|決済手数料|口座振替(?:サービス)?(?:利用)?(?:手数料|料)|口振(?:サービス)?(?:利用)?(?:手数料|料)|引落(?:サービス)?(?:利用)?(?:手数料|料))[^。・\n\r%]{{0,80}}?({GUARANTEE_MONEY_PATTERN})"
+    direct_amount = sum(
+        guarantee_money_to_int(match.group(1))
+        for match in re.finditer(direct_pattern, text, re.MULTILINE | re.DOTALL)
+    )
+    if direct_amount:
+        return direct_amount
     return sum(
         guarantee_money_to_int(match.group(1))
         for match in re.finditer(rf"(?:\+|＋)\s*[^+＋\d円]{{0,16}}?({GUARANTEE_MONEY_PATTERN})", text)
     )
+
+
+def _monthly_fixed_extra_without_duplicate(text: str, monthly_fixed: int, monthly_fixed_extra: int) -> int:
+    if not monthly_fixed or monthly_fixed != monthly_fixed_extra:
+        return monthly_fixed_extra
+    has_included_extra_fee = any(
+        re.search(r"(?:月額保証料|月次保証料|月額保証委託料|月次保証委託料|毎月保証料|月々保証料)", clause)
+        and re.search(r"(?:月額手数料|月額事務手数料|支払手数料|集送金手数料|集金代行|収納代行|決済手数料|口座振替|口振|引落)", clause)
+        and re.search(r"(?:含む|込み|込)", clause)
+        for clause in re.split(r"[。\n\r]", text)
+    )
+    if has_included_extra_fee:
+        return 0
+    matching_amounts = [
+        match.group(0)
+        for match in re.finditer(GUARANTEE_MONEY_PATTERN, text)
+        if guarantee_money_to_int(match.group(0)) == monthly_fixed_extra
+    ]
+    return 0 if len(matching_amounts) == 1 else monthly_fixed_extra
 
 
 def _guarantee_renewal_amount(text: str) -> int:
@@ -575,10 +593,14 @@ def parse_guarantee_terms(text: str) -> dict[str, float | int | str]:
     )
     if re.search(rf"初回\s*\d+(?:\.\d+)?\s*(?:%|パーセント)[^。\n\r]{{0,40}}?(?:月|月額)\s*{GUARANTEE_MONEY_PATTERN}", normalized):
         monthly_rate = 0
-    monthly_fixed_extras = _guarantee_monthly_fixed_extra(normalized, monthly_rate)
     initial_minimum = _guarantee_initial_minimum(normalized, initial_rate)
     fixed = _guarantee_fixed_initial(normalized, initial_rate)
     monthly_fixed = _guarantee_monthly_fixed(normalized, monthly_rate)
+    monthly_fixed_extras = _monthly_fixed_extra_without_duplicate(
+        normalized,
+        monthly_fixed,
+        _guarantee_monthly_fixed_extra(normalized, monthly_rate),
+    )
     renewal_amount = _guarantee_renewal_amount(normalized)
     return {
         "fixed": fixed,
