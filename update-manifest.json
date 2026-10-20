@@ -1,20 +1,19 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-10-18T09:12:45.000Z",
+  "publishedAt": "2026-10-20T09:56:44.3717644Z",
   "windows": {
-    "version": "2026.10.18.5",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.10.18.5.exe",
-    "sha256": "a5bf33f7a34330ee1ac597e0da0143110b2f73a4b614215f016c7840a9ee5c5e",
+    "version": "2026.10.20.6",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.10.20.6.exe",
+    "sha256": "58d853ac9c3d5316ab2caddbdd6c3ab4da7d16d72fdb93b6d6d802797a70f840",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.10.18.5.exe",
+    "fileName": "property-list-automation-windows-2026.10.20.6.exe",
     "required": false,
     "notes": [
-      "候補の詳細判定対象とCSVの整合を確認します",
-      "リアプロタブが応答しない場合は対象タブだけ1回再読み込みして確認します",
-      "詳細取得エラーを確認完了として扱わず、取得済みデータを保持します",
-      "当日のいい生活照合後にCSVを再保存して鮮度を確認してください",
-      "開発中のリアプロ→いい生活登録・上書き連動機能は含みません",
-      "取得データ・CSV・履歴・専用Chromeのログイン情報を保持して上書き更新",
+      "リアプロ詳細取得でタブ切断時の再接続と対象IDの再試行を改善",
+      "途中停止時の再開ページ数と失敗内容の表示を改善",
+      "既存の取得データ・CSV・履歴・Chromeログイン情報を保持して更新",
+      "旧版からの自動更新とNSIS版のサイレント更新に対応",
+      "通常の手動インストール・更新では完了画面から起動を選択可能",
       "コード署名なしのため、Windowsの許可操作が必要な場合があります"
     ]
   },
