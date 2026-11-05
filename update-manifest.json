@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-10-20T09:56:44.3717644Z",
+  "publishedAt": "2026-11-05T06:21:38.540Z",
   "windows": {
-    "version": "2026.10.20.6",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.10.20.6.exe",
-    "sha256": "58d853ac9c3d5316ab2caddbdd6c3ab4da7d16d72fdb93b6d6d802797a70f840",
+    "version": "2026.11.05.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.11.05.1.exe",
+    "sha256": "17ef163135db992b76674d133d33bcb793bcfce282a89fabb09622ac606f552f",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.10.20.6.exe",
+    "fileName": "property-list-automation-windows-2026.11.05.1.exe",
     "required": false,
     "notes": [
-      "リアプロ詳細取得でタブ切断時の再接続と対象IDの再試行を改善",
-      "途中停止時の再開ページ数と失敗内容の表示を改善",
+      "専用Chromeの接続・タブ検出・読み取り・再読み込みを段階別に診断",
+      "起動時に接続先の不一致を検出した場合、取得中でなければ専用ブリッジを復旧し、結果を右下に表示",
       "既存の取得データ・CSV・履歴・Chromeログイン情報を保持して更新",
       "旧版からの自動更新とNSIS版のサイレント更新に対応",
       "通常の手動インストール・更新では完了画面から起動を選択可能",
