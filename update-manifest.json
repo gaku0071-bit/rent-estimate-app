@@ -1,14 +1,16 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-11-05T06:21:38.540Z",
+  "publishedAt": "2026-11-17T05:40:44.298Z",
   "windows": {
-    "version": "2026.11.05.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.11.05.1.exe",
-    "sha256": "17ef163135db992b76674d133d33bcb793bcfce282a89fabb09622ac606f552f",
+    "version": "2026.11.17.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.11.17.1.exe",
+    "sha256": "fceaa0ac9a5d625779506b6207ad3d4e7fc76232952721ccef2e2bc2bef27fbd",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.11.05.1.exe",
+    "fileName": "property-list-automation-windows-2026.11.17.1.exe",
     "required": false,
     "notes": [
+      "リアプロ一覧を最大5ページずつ検証・保存し、停止時は取得済みページを保持",
+      "読み取りが応答しない場合の表示と、未取得ページからの再開を改善",
       "専用Chromeの接続・タブ検出・読み取り・再読み込みを段階別に診断",
       "起動時に接続先の不一致を検出した場合、取得中でなければ専用ブリッジを復旧し、結果を右下に表示",
       "既存の取得データ・CSV・履歴・Chromeログイン情報を保持して更新",

@@ -43,4 +43,5 @@ f6004b6ad52221974b80cf5f10caea98c8aa16cb929afceb3d9c3e1e32b6d105  downloads/prop
 a5bf33f7a34330ee1ac597e0da0143110b2f73a4b614215f016c7840a9ee5c5e  downloads/property-list-automation-windows-2026.10.18.5.exe
 58d853ac9c3d5316ab2caddbdd6c3ab4da7d16d72fdb93b6d6d802797a70f840  downloads/property-list-automation-windows-2026.10.20.6.exe
 17ef163135db992b76674d133d33bcb793bcfce282a89fabb09622ac606f552f  downloads/property-list-automation-windows-2026.11.05.1.exe
-5b5646637916d9b9edf4f60a4e3e9314e71bc8c2e568c198796080af9138b083  update-manifest.json
+fceaa0ac9a5d625779506b6207ad3d4e7fc76232952721ccef2e2bc2bef27fbd  downloads/property-list-automation-windows-2026.11.17.1.exe
+646250a874f950a5371679905bf34b0a2da91b111113902b4718846cd40a9efc  update-manifest.json
