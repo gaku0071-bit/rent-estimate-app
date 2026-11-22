@@ -1,14 +1,17 @@
 {
   "schemaVersion": 1,
-  "publishedAt": "2026-11-17T05:40:44.298Z",
+  "publishedAt": "2026-11-22T04:39:33.020Z",
   "windows": {
-    "version": "2026.11.17.1",
-    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.11.17.1.exe",
-    "sha256": "fceaa0ac9a5d625779506b6207ad3d4e7fc76232952721ccef2e2bc2bef27fbd",
+    "version": "2026.11.22.1",
+    "url": "https://raw.githubusercontent.com/gaku0071-bit/rent-estimate-app/property-list-updates/downloads/property-list-automation-windows-2026.11.22.1.exe",
+    "sha256": "af15a0d790589deb45e91ee2a93ea89b2a579b00fdf40c4490eb378869c042ba",
     "packageType": "exe",
-    "fileName": "property-list-automation-windows-2026.11.17.1.exe",
+    "fileName": "property-list-automation-windows-2026.11.22.1.exe",
     "required": false,
     "notes": [
+      "築年数をリアプロと同じ「○年以内」のプルダウンで指定可能に変更",
+      "賃料の上下限を5,000円刻みに変更",
+      "詳細の契約種別から定期借家を検出して候補から除外（旧判定の詳細は次回再確認）",
       "リアプロ一覧を最大5ページずつ検証・保存し、停止時は取得済みページを保持",
       "読み取りが応答しない場合の表示と、未取得ページからの再開を改善",
       "専用Chromeの接続・タブ検出・読み取り・再読み込みを段階別に診断",
